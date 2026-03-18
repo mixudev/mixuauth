@@ -66,6 +66,15 @@ class WebAuthController extends Controller
             return back()->withErrors(['email' => $data['message'] ?? 'Login diblokir karena aktivitas mencurigakan.']);
         }
 
+        if ($response->status() === 429) {
+            $retryAfter = $data['retry_after'] ?? 60;
+            return back()
+                ->withInput($request->only('email'))
+                ->with('rate_limited', true)
+                ->with('retry_after', $retryAfter)
+                ->withErrors(['email' => $data['message'] ?? 'Terlalu banyak percobaan.']);
+        }   
+        
         return back()
             ->withInput($request->only('email'))
             ->withErrors(['email' => $data['message'] ?? 'Email atau password salah.']);
