@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Security;
+namespace App\Http\Controllers\Admin\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Security\BlockUserRequest;
 use App\Http\Requests\Security\StoreUserRequest;
 use App\Http\Requests\Security\UpdateUserRequest;
 use App\Models\User;
-use App\Services\UserService;
+use App\Services\User\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,7 +28,7 @@ class UserManagementController extends Controller
         $users = $this->userService->getUsers($filters);
         $stats = $this->userService->getSummaryStats();
 
-        return view('security.users.index', compact('users', 'stats', 'filters'));
+        return view('admin.dashboard.user.index', compact('users', 'stats', 'filters'));
     }
 
     // ─── Store ─────────────────────────────────────────────────────────────────

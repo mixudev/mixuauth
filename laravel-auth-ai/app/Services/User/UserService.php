@@ -3,52 +3,225 @@
 namespace App\Services\User;
 
 use App\Models\User;
-use App\Repositories\UserRepository;
-use Illuminate\Support\Facades\Hash;
+use App\Models\UserBlock;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 
 class UserService
 {
-    public function __construct(
-        private readonly UserRepository $userRepository
-    ) {}
-
-    public function getPaginatedUsers(int $perPage = 15, ?string $search = null): LengthAwarePaginator
+    /**
+     * Ambil daftar user dengan filter, search, dan sort.
+     */
+    public function getUsers(array $filters = []): LengthAwarePaginator
     {
-        return $this->userRepository->getPaginated($perPage, $search);
+        $query = User::withTrashed()
+            ->with(['activeBlock'])
+            ->withCount(['loginLogs', 'userBlocks']);
+
+        // Search
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('last_login_ip', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter status
+        match ($filters['status'] ?? 'all') {
+            'active'   => $query->whereNull('deleted_at')->where('is_active', true)
+                                ->whereDoesntHave('activeBlock'),
+            'inactive' => $query->whereNull('deleted_at')->where('is_active', false)
+                                ->whereDoesntHave('activeBlock'),
+            'blocked'  => $query->whereHas('activeBlock'),
+            'deleted'  => $query->whereNotNull('deleted_at'),
+            default    => $query->whereNull('deleted_at'),
+        };
+
+        // Sort
+        $sortMap = [
+            'name'           => ['name', 'asc'],
+            '-name'          => ['name', 'desc'],
+            '-last_login_at' => ['last_login_at', 'desc'],
+            '-created_at'    => ['created_at', 'desc'],
+            'created_at'     => ['created_at', 'asc'],
+            'block_count'    => ['user_blocks_count', 'desc'],
+        ];
+
+        [$col, $dir] = $sortMap[$filters['sort'] ?? '-created_at'];
+        $query->orderBy($col, $dir);
+
+        $perPage = in_array((int)($filters['per_page'] ?? 15), [10, 25, 50, 100])
+            ? (int) $filters['per_page']
+            : 15;
+
+        return $query->paginate($perPage)->withQueryString();
     }
 
+    /**
+     * Statistik ringkasan untuk stat cards.
+     */
+    public function getSummaryStats(): array
+    {
+        return [
+            'total'    => User::count(),
+            'active'   => User::where('is_active', true)
+                              ->whereDoesntHave('activeBlock')
+                              ->count(),
+            'blocked'  => UserBlock::active()->count(),
+            'inactive' => User::where('is_active', false)
+                              ->whereDoesntHave('activeBlock')
+                              ->count(),
+            'unverified' => User::whereNull('email_verified_at')->count(),
+            'new_today'  => User::whereDate('created_at', today())->count(),
+        ];
+    }
+
+    /**
+     * Buat user baru.
+     */
     public function createUser(array $data): User
     {
-        $data['password'] = Hash::make($data['password']);
-        $data['is_active'] = $data['is_active'] ?? true;
-        
-        return $this->userRepository->create($data);
+        return DB::transaction(function () use ($data) {
+            $user = User::create([
+                'name'              => $data['name'],
+                'email'             => $data['email'],
+                'password'          => Hash::make($data['password']),
+                'is_active'         => (bool) ($data['is_active'] ?? true),
+                'email_verified_at' => isset($data['email_verified']) && $data['email_verified']
+                    ? now()
+                    : null,
+            ]);
+
+            return $user;
+        });
     }
 
-    public function getUserById(int $id): ?User
+    /**
+     * Update data user.
+     */
+    public function updateUser(User $user, array $data): User
     {
-        return $this->userRepository->findById($id);
+        return DB::transaction(function () use ($user, $data) {
+            $payload = [
+                'name'      => $data['name'],
+                'email'     => $data['email'],
+                'is_active' => (bool) ($data['is_active'] ?? $user->is_active),
+            ];
+
+            // Email verified toggle
+            if (isset($data['email_verified'])) {
+                $payload['email_verified_at'] = $data['email_verified']
+                    ? ($user->email_verified_at ?? now())
+                    : null;
+            }
+
+            // Update password jika diisi
+            if (!empty($data['password'])) {
+                $payload['password'] = Hash::make($data['password']);
+            }
+
+            $user->update($payload);
+
+            return $user->fresh();
+        });
     }
 
-    public function updateUser(User $user, array $data): bool
+    /**
+     * Blokir user.
+     */
+    public function blockUser(User $user, array $data, ?int $blockedBy = null): UserBlock
     {
-        if (isset($data['password']) && !empty($data['password'])) {
-            $data['password'] = Hash::make($data['password']);
-        } else {
-            unset($data['password']);
+        return DB::transaction(function () use ($user, $data, $blockedBy) {
+            // Nonaktifkan blokir lama jika ada
+            $user->userBlocks()->active()->update(['unblocked_at' => now()]);
+
+            $blockCount = $user->userBlocks()->count() + 1;
+
+            $block = UserBlock::create([
+                'user_id'       => $user->id,
+                'reason'        => $data['reason'],
+                'blocked_by'    => $blockedBy,
+                'block_count'   => $blockCount,
+                'blocked_until' => !empty($data['blocked_until']) ? $data['blocked_until'] : null,
+            ]);
+
+            // Nonaktifkan user
+            $user->update(['is_active' => false]);
+
+            return $block;
+        });
+    }
+
+    /**
+     * Unblokir user.
+     */
+    public function unblockUser(User $user, ?int $unblockedBy = null): void
+    {
+        DB::transaction(function () use ($user, $unblockedBy) {
+            $user->userBlocks()->active()->update([
+                'unblocked_at' => now(),
+                'unblocked_by' => $unblockedBy,
+            ]);
+
+            $user->update(['is_active' => true]);
+        });
+    }
+
+    /**
+     * Soft delete user.
+     */
+    public function deleteUser(User $user): void
+    {
+        DB::transaction(function () use ($user) {
+            // Blokir semua sesi aktif
+            $user->userBlocks()->active()->update(['unblocked_at' => now()]);
+            $user->delete();
+        });
+    }
+
+    /**
+     * Restore soft-deleted user.
+     */
+    public function restoreUser(User $user): void
+    {
+        $user->restore();
+        $user->update(['is_active' => true]);
+    }
+
+    /**
+     * Kirim link reset password.
+     */
+    public function sendPasswordReset(User $user): string
+    {
+        return Password::sendResetLink(['email' => $user->email]);
+    }
+
+    /**
+     * Bulk block/unblock.
+     */
+    public function bulkBlock(array $userIds, string $reason, ?int $blockedBy = null): int
+    {
+        $count = 0;
+        $users = User::whereIn('id', $userIds)->get();
+        foreach ($users as $user) {
+            $this->blockUser($user, ['reason' => $reason], $blockedBy);
+            $count++;
         }
-        
-        $data['is_active'] = isset($data['is_active']) ? (bool) $data['is_active'] : false;
-
-        return $this->userRepository->update($user, $data);
+        return $count;
     }
 
-    public function deleteUser(User $user): bool
+    public function bulkUnblock(array $userIds, ?int $unblockedBy = null): int
     {
-        if (auth()->id() === $user->id) {
-            throw new \Exception("Anda tidak dapat menghapus akun Anda sendiri.");
+        $count = 0;
+        $users = User::whereIn('id', $userIds)->get();
+        foreach ($users as $user) {
+            $this->unblockUser($user, $unblockedBy);
+            $count++;
         }
-        return $this->userRepository->delete($user);
+        return $count;
     }
 }

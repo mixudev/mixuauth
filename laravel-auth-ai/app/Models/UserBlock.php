@@ -1,11 +1,13 @@
 <?php
-// ============================================================
-// app/Models/UserBlock.php
-// ============================================================
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 class UserBlock extends Model
 {
@@ -20,23 +22,39 @@ class UserBlock extends Model
         'unblocked_at'  => 'datetime',
     ];
 
+    // ─── Relasi ────────────────────────────────────────────────────────────────
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function isActive(): bool
+    public function blockedByUser(): BelongsTo
     {
-        return is_null($this->unblocked_at)
-            && (is_null($this->blocked_until) || $this->blocked_until->isFuture());
+        return $this->belongsTo(User::class, 'blocked_by');
     }
 
-    public function scopeActive($query)
+    public function unblockedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'unblocked_by');
+    }
+
+    // ─── Scopes ────────────────────────────────────────────────────────────────
+
+    public function scopeActive(Builder $query): Builder
     {
         return $query->whereNull('unblocked_at')
             ->where(function ($q) {
                 $q->whereNull('blocked_until')
                   ->orWhere('blocked_until', '>', now());
             });
+    }
+
+    // ─── Helpers ───────────────────────────────────────────────────────────────
+
+    public function isActive(): bool
+    {
+        return is_null($this->unblocked_at)
+            && (is_null($this->blocked_until) || $this->blocked_until->isFuture());
     }
 }

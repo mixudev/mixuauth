@@ -47,8 +47,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                     </svg>
-                    <svg id="iconSun" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor" stroke-width="1.8">
+                    <svg id="iconSun" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        stroke-width="1.8">
                         <circle cx="12" cy="12" r="5" />
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
@@ -91,8 +91,7 @@
                 <button
                     class="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                     style="transition:background 150ms">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                        stroke-width="1.8">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
@@ -106,7 +105,8 @@
                         class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                         style="transition:background 150ms">
                         <div class="w-7 h-7 rounded-full  flex  flex-shrink-0">
-                            <img src="https://i.pravatar.cc/300" alt="Avatar" class="w-full h-full rounded-full object-cover">
+                            <img src="https://i.pravatar.cc/300" alt="Avatar"
+                                class="w-full h-full rounded-full object-cover">
                         </div>
                         <span class="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300">
                             {{ auth()->user()->name ?? '' }}
@@ -146,16 +146,12 @@
 
                             <form method="POST" action="{{ route('logout') }}" id="logout-form">
                                 @csrf
-                                <button
-                                    type="button"
-                                    id="btn-logout"
+                                <button type="button" id="btn-logout"
                                     class="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-500
-                                        hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                >
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" stroke-width="1.8">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1
+                                        hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="1.8">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1
                                                 a3 3 0 01-3 3H6a3 3 0 01-3-3V7
                                                 a3 3 0 013-3h4a3 3 0 013 3v1" />
                                     </svg>
@@ -169,18 +165,17 @@
             </div>
         </header>
 
-<script>
-document.getElementById('btn-logout').addEventListener('click', () => {
-    AppPopup.confirm({
-        title: 'Logout?',
-        description: 'Sesi kamu akan diakhiri',
-        confirmText: 'Logout',
-        cancelText: 'Batal',
-        confirmClass: 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700',
-        onConfirm: () => {
-            document.getElementById('logout-form').submit();
-        }
-    });
-});
-
-</script>
+        <script>
+            document.getElementById('btn-logout').addEventListener('click', () => {
+                AppPopup.confirm({
+                    title: 'Logout?',
+                    description: 'Sesi kamu akan diakhiri',
+                    confirmText: 'Logout',
+                    cancelText: 'Batal',
+                    confirmClass: 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700',
+                    onConfirm: () => {
+                        document.getElementById('logout-form').submit();
+                    }
+                });
+            });
+        </script>

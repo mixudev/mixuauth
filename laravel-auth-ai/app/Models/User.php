@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -76,9 +78,43 @@ class User extends Authenticatable
         return $this->hasMany(OtpVerification::class);
     }
 
+    public function userBlocks(): HasMany
+    {
+        return $this->hasMany(UserBlock::class);
+    }
+
     // -----------------------------------------------------------------------
     // Helper Methods
     // -----------------------------------------------------------------------
+
+    /**
+     * Blokir aktif saat ini (jika ada).
+     */
+    public function activeBlock(): HasOne
+    {
+        return $this->hasOne(UserBlock::class)->whereNull('unblocked_at')
+            ->where(function ($q) {
+                $q->whereNull('blocked_until')
+                  ->orWhere('blocked_until', '>', now());
+            });
+    }
+
+    // ─── Accessors ─────────────────────────────────────────────────────────────
+
+    public function getIsBlockedAttribute(): bool
+    {
+        return $this->relationLoaded('activeBlock')
+            ? $this->activeBlock !== null
+            : $this->activeBlock()->exists();
+    }
+
+    public function getBlockCountAttribute(): int
+    {
+        return $this->relationLoaded('userBlocks')
+            ? $this->userBlocks->count()
+            : $this->userBlocks()->count();
+    }
+
 
     /**
      * Periksa apakah akun pengguna masih aktif.

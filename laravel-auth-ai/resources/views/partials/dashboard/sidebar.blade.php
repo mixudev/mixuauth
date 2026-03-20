@@ -61,7 +61,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="" data-page="users" class="sidebar-link " aria-label="Users">
+                        <a href="{{ route('dashboard.users.index') }}" data-page="users" class="sidebar-link {{ request()->routeIs('dashboard.users.index') ? 'active' : '' }}" aria-label="Users">
                             <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
                                     class="w-4 h-4">
