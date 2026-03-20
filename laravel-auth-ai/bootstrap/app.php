@@ -50,4 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
     })
+    ->withProviders([
+        App\Providers\DashboardServiceProvider::class,
+    ])
     ->create();

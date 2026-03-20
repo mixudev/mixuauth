@@ -57,6 +57,30 @@ class LoginLog extends Model
     const DECISION_BLOCK = 'BLOCK';
 
     // -----------------------------------------------------------------------
+    // Model Events
+    // -----------------------------------------------------------------------
+
+    protected static function booted()
+    {
+        static::created(function ($log) {
+            // Automatically log to security_notifications for failed/blocked actions
+            if (in_array($log->status, [self::STATUS_FAILED, self::STATUS_BLOCKED, self::STATUS_OTP])) {
+                $type = 'warning';
+                if ($log->status === self::STATUS_BLOCKED) {
+                    $type = 'error';
+                }
+                
+                \App\Models\SecurityNotification::create([
+                    'type' => $type,
+                    'title' => 'Peringatan Keamanan. Status: ' . strtoupper($log->status),
+                    'message' => 'Upaya login ke akun (' . ($log->email_attempted ?? 'Unknown') . ') dari IP ' . $log->ip_address,
+                    'ip_address' => $log->ip_address,
+                ]);
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------------
     // Relasi
     // -----------------------------------------------------------------------
 

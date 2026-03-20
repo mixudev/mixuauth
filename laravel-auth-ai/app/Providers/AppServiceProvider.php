@@ -2,13 +2,16 @@
 
 namespace App\Providers;
 
+use App\Services\Auth\BlockingService;
+use App\Services\Auth\LoginRiskService;
+use App\Services\Auth\LoginAuditService;
+use App\Services\Auth\OtpService;
+use App\Services\Security\DeviceFingerprintService;
+use App\Services\Security\AiRiskClientService;
+use App\Services\Security\RiskFallbackService;
+use App\Services\Stats\StatsService;
+use App\Services\User\UserService;
 use App\Repositories\TrustedDeviceRepository;
-use App\Services\AiRiskClientService;
-use App\Services\DeviceFingerprintService;
-use App\Services\LoginAuditService;
-use App\Services\LoginRiskService;
-use App\Services\OtpService;
-use App\Services\RiskFallbackService;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\View;
@@ -32,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(AiRiskClientService::class);
         $this->app->singleton(RiskFallbackService::class);
         $this->app->singleton(OtpService::class);
+        $this->app->singleton(BlockingService::class);
 
         // Service dengan dependency injection otomatis via container
         $this->app->singleton(LoginRiskService::class, function ($app) {
@@ -71,5 +75,7 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('aiOnline', $aiOnline);
         });
+
+        
     }
 }

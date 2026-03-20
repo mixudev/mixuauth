@@ -3,7 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\TrustedDevice;
-use App\Services\DeviceFingerprintService;
+use App\Services\Security\DeviceFingerprintService;
 use Illuminate\Http\Request;
 
 class TrustedDeviceRepository
