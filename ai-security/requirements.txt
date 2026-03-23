@@ -4,28 +4,23 @@
 # Update dilakukan secara sengaja, bukan otomatis.
 # ============================================================
 
-# Framework API
-fastapi==0.115.5
-uvicorn[standard]==0.32.1
+# Framework API (FastAPI & Uvicorn)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
 
-# Validasi data dan konfigurasi
-pydantic==2.10.1
-pydantic-settings==2.6.1
+# Validasi data dan konfigurasi (Pydantic V2)
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
 
 # Machine Learning
-scikit-learn==1.5.2
-numpy==1.26.4
+scikit-learn>=1.5.0
+numpy>=1.26.0
 
 # Parsing data untuk training script
-pandas==2.2.3
+pandas>=2.2.0
 
 # Keamanan tambahan (opsional tapi direkomendasikan)
-# python-multipart diperlukan oleh FastAPI untuk form data
-python-multipart==0.0.12
-
-# Rate limiting (digunakan via slowapi jika diperlukan)
-# slowapi==0.1.9
+python-multipart>=0.0.12
 
 # WSGI/ASGI server untuk production
-# Gunakan Gunicorn + Uvicorn worker untuk multi-process
-gunicorn==23.0.0
+gunicorn>=23.0.0
