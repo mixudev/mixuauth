@@ -103,8 +103,8 @@ services:
       - ./ai-security/app/models:/app/app/models
       - ./ai-security/logs:/app/logs
       - ./ai-security:/app
-    # ports:
-    #   - "8000:8000"
+    ports:
+      - "8000:8000"
     networks:
       - internal
     healthcheck:
@@ -126,10 +126,10 @@ services:
       PMA_HOST: db
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: root_secure_9283_password_!
-      MYSQL_ROOT_PASSWORD: root_secure_9283_password_!
-    # ports:
-    #   - "8081:80"
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "8081:80"
     networks:
       - internal
 
@@ -142,19 +142,19 @@ services:
     env_file:
       - ./laravel-auth-ai/.env
     environment:
-      MYSQL_DATABASE: "Mixu_Auth"
-      MYSQL_USER: "app_user"
-      MYSQL_PASSWORD: "app_secure_7261_password_fsaA"
-      MYSQL_ROOT_PASSWORD: "root_secure_9283_password_!"
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
     volumes:
       - db_data:/var/lib/mysql
       - ./laravel-auth-ai/docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
-    # ports:
-    #   - "3307:3306"
+    ports:
+      - "3307:3306"
     networks:
       - internal
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_secure_9283_password_!"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5

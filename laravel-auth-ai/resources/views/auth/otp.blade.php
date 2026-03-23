@@ -8,11 +8,11 @@
 
 @section('content')
 
-<div class="min-h-screen bg-amber-50 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+<div class="min-h-screen bg-blue-50 flex items-center justify-center px-4 py-12 relative overflow-hidden">
 
     {{-- Ambient blobs --}}
-    <div class="absolute -top-32 -right-32 w-96 h-96 bg-amber-200 rounded-full opacity-40 blur-3xl pointer-events-none"></div>
-    <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-orange-200 rounded-full opacity-30 blur-3xl pointer-events-none"></div>
+    <div class="absolute -top-32 -right-32 w-96 h-96 bg-blue-200 rounded-full opacity-40 blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-purple-200 rounded-full opacity-30 blur-3xl pointer-events-none"></div>
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-100 rounded-full opacity-50 blur-3xl pointer-events-none"></div>
 
     {{-- Dot grid --}}
@@ -24,19 +24,19 @@
     <div class="relative w-full max-w-md">
 
         {{-- Top accent line --}}
-        <div class="absolute -top-px left-16 right-16 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent z-10"></div>
+        <div class="absolute -top-px left-16 right-16 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent z-10"></div>
 
         {{-- Card --}}
-        <div class="bg-white/80 backdrop-blur-xl border border-amber-100 rounded-3xl shadow-2xl shadow-amber-100/70 px-10 py-12">
+        <div class="bg-white/80 backdrop-blur-xl border border-blue-100 rounded-3xl shadow-2xl shadow-blue-100/70 px-10 py-12">
 
             {{-- ── Header ── --}}
             <div class="flex flex-col items-center text-center mb-10">
 
                 {{-- Lock icon --}}
                 <div class="relative w-20 h-20 mb-6 flex items-center justify-center">
-                    <div class="absolute inset-0 rounded-full border border-amber-300 opacity-30 animate-ping"></div>
-                    <div class="absolute inset-2 rounded-full border border-amber-200 opacity-60 animate-pulse"></div>
-                    <div class="relative w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-400 rounded-2xl shadow-lg shadow-amber-300/50 flex items-center justify-center rotate-3 transition-transform duration-300 hover:rotate-0">
+                    <div class="absolute inset-0 rounded-full border border-blue-300 opacity-30 animate-ping"></div>
+                    <div class="absolute inset-2 rounded-full border border-blue-200 opacity-60 animate-pulse"></div>
+                    <div class="relative w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-400 rounded-2xl shadow-lg shadow-blue-300/50 flex items-center justify-center rotate-3 transition-transform duration-300 hover:rotate-0">
                         <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
                         </svg>
@@ -44,15 +44,15 @@
                 </div>
 
                 <h1 class="font-['Lora'] text-3xl font-semibold text-stone-800 tracking-tight leading-tight">
-                    Verifikasi <em class="text-amber-500 not-italic italic">Identitas</em>
+                    Verifikasi <em class="text-blue-500 not-italic italic">Identitas</em>
                 </h1>
 
                 <p class="mt-3 text-sm text-stone-400 leading-relaxed">
                     Kode 6 digit telah dikirimkan ke
                 </p>
 
-                <span class="mt-2 inline-flex items-center gap-1.5 font-['JetBrains_Mono'] text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                <span class="mt-2 inline-flex items-center gap-1.5 font-['JetBrains_Mono'] text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-3 py-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
                     {{ session('otp_email', 'email@kamu.com') }}
                 </span>
             </div>
@@ -81,7 +81,7 @@
                     @for($i = 0; $i < 3; $i++)
                         <input
                             type="text"
-                            class="otp-digit w-12 h-14 bg-stone-50 border border-stone-200 rounded-xl text-center font-['JetBrains_Mono'] text-xl font-semibold text-stone-700 outline-none transition-all duration-200 focus:border-amber-400 focus:bg-amber-50/60 focus:shadow-[0_0_0_3px_rgba(251,191,36,0.15)] focus:-translate-y-0.5"
+                            class="otp-digit w-12 h-14 bg-stone-50 border border-stone-200 rounded-xl text-center font-['JetBrains_Mono'] text-xl font-semibold text-stone-700 outline-none transition-all duration-200 focus:border-blue-400 focus:bg-blue-50/60 focus:shadow-[0_0_0_3px_rgba(251,191,36,0.15)] focus:-translate-y-0.5"
                             maxlength="1"
                             inputmode="numeric"
                             data-index="{{ $i }}"
@@ -95,7 +95,7 @@
                     @for($i = 3; $i < 6; $i++)
                         <input
                             type="text"
-                            class="otp-digit w-12 h-14 bg-stone-50 border border-stone-200 rounded-xl text-center font-['JetBrains_Mono'] text-xl font-semibold text-stone-700 outline-none transition-all duration-200 focus:border-amber-400 focus:bg-amber-50/60 focus:shadow-[0_0_0_3px_rgba(251,191,36,0.15)] focus:-translate-y-0.5"
+                            class="otp-digit w-12 h-14 bg-stone-50 border border-stone-200 rounded-xl text-center font-['JetBrains_Mono'] text-xl font-semibold text-stone-700 outline-none transition-all duration-200 focus:border-blue-400 focus:bg-blue-50/60 focus:shadow-[0_0_0_3px_rgba(251,191,36,0.15)] focus:-translate-y-0.5"
                             maxlength="1"
                             inputmode="numeric"
                             data-index="{{ $i }}"
@@ -107,7 +107,7 @@
 
                 {{-- Progress bar --}}
                 <div class="h-0.5 bg-stone-100 rounded-full mx-2 mb-7 overflow-hidden">
-                    <div id="progressBar" class="h-full bg-gradient-to-r from-amber-400 to-orange-300 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-blue-400 to-purple-300 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
                 </div>
 
                 {{-- Submit button --}}
@@ -115,7 +115,7 @@
                     type="submit"
                     id="submitBtn"
                     disabled
-                    class="w-full flex items-center justify-center gap-2.5 bg-gradient-to-br from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 disabled:from-stone-200 disabled:to-stone-200 disabled:text-stone-400 text-white font-semibold text-sm rounded-xl py-3.5 transition-all duration-200 shadow-lg shadow-amber-200/60 disabled:shadow-none hover:shadow-amber-300/60 hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed"
+                    class="w-full flex items-center justify-center gap-2.5 bg-gradient-to-br from-blue-400 to-purple-400 hover:from-blue-300 hover:to-purple-300 disabled:from-stone-200 disabled:to-stone-200 disabled:text-stone-400 text-white font-semibold text-sm rounded-xl py-3.5 transition-all duration-200 shadow-lg shadow-blue-200/60 disabled:shadow-none hover:shadow-blue-300/60 hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed"
                 >
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 12c0 6.627 5.373 12 12 12s12-5.373 12-12c0-2.127-.557-4.124-1.534-5.857"/>
@@ -128,9 +128,9 @@
             <div class="mt-7 flex flex-col items-center gap-4">
 
                 <div class="flex items-center gap-2 font-['JetBrains_Mono'] text-xs text-stone-400">
-                    <span id="timerDot" class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse flex-shrink-0"></span>
+                    <span id="timerDot" class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse flex-shrink-0"></span>
                     <span>Berlaku selama</span>
-                    <span id="timerDisplay" class="text-amber-500 font-medium">
+                    <span id="timerDisplay" class="text-blue-500 font-medium">
                         {{ session('otp_expires_in', '05:00') }}
                     </span>
                 </div>
@@ -148,7 +148,7 @@
         </div>
 
         {{-- Depth shadow layer --}}
-        <div class="absolute -bottom-3 left-8 right-8 h-8 bg-amber-200/50 rounded-3xl blur-lg -z-10"></div>
+        <div class="absolute -bottom-3 left-8 right-8 h-8 bg-blue-200/50 rounded-3xl blur-lg -z-10"></div>
     </div>
 </div>
 
@@ -164,10 +164,10 @@
 
     function setFilled(el, filled) {
         if (filled) {
-            el.classList.add('border-amber-300', 'bg-amber-50', 'text-amber-600');
+            el.classList.add('border-blue-300', 'bg-blue-50', 'text-blue-600');
             el.classList.remove('border-stone-200', 'bg-stone-50', 'text-stone-700');
         } else {
-            el.classList.remove('border-amber-300', 'bg-amber-50', 'text-amber-600');
+            el.classList.remove('border-blue-300', 'bg-blue-50', 'text-blue-600');
             el.classList.add('border-stone-200', 'bg-stone-50', 'text-stone-700');
         }
     }
@@ -231,8 +231,8 @@
         if (seconds <= 0) {
             clearInterval(tick);
             timerEl.textContent = 'Kedaluwarsa';
-            timerEl.classList.replace('text-amber-500', 'text-red-400');
-            timerDot.classList.replace('bg-amber-400', 'bg-red-400');
+            timerEl.classList.replace('text-blue-500', 'text-red-400');
+            timerDot.classList.replace('bg-blue-400', 'bg-red-400');
             return;
         }
         const m = String(Math.floor(seconds / 60)).padStart(2, '0');
