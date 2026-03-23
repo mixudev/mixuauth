@@ -1,332 +1,118 @@
-# Secure Auth System — Panduan Lengkap
+# Secure Auth System — AI-Powered Authentication
 
-Panduan ini menjelaskan cara menjalankan sistem dari nol sampai siap digunakan,
-termasuk cara mengatur SMTP untuk pengiriman OTP.
-
----
-
-## Struktur Direktori
-
-```
-secure-system/
-├── laravel-auth-ai/        ← Project Laravel (dari zip sebelumnya)
-├── ai-security/            ← Project FastAPI (dari zip sebelumnya)
-├── docker/
-│   └── nginx/
-│       └── default.conf    ← Konfigurasi Nginx
-├── docker-compose.yml      ← Orchestrasi semua service
-├── setup.sh                ← Script setup otomatis
-└── README.md               ← File ini
-```
+Sistem autentikasi Laravel 11/12 yang diperkuat dengan **AI Risk Assessment** (FastAPI) untuk deteksi ancaman dini, sistem OTP, dan manajemen keamanan tingkat lanjut.
 
 ---
 
-## Langkah 1 — Siapkan File Konfigurasi
+## 🚀 Fitur Utama
 
-### Laravel `.env`
+- **AI-Based Early Threat Detection**: Evaluasi setiap percobaan login menggunakan Machine Learning untuk mendeteksi perilaku mencurigakan.
+- **Secure Password Reset**: Token Argon2id, deteksi link kadaluarsa, dan kemampuan admin untuk menginisiasi reset langsung dari dashboard.
+- **Context-Aware Rate Limiting**: Pembatasan percobaan login/reset yang cerdas berdasarkan kombinasi konteks, email, dan IP.
+- **Device Fingerprinting**: Melacak dan memverifikasi perangkat yang dipercaya.
+- **Automated setup**: Script `setup.sh` yang otomatis menyiapkan seluruh lingkungan (Docker, .env, Keys, Migrations).
+
+---
+
+## 🛠️ Persyaratan Sistem
+
+- **Docker Desktop** (atau Docker Engine + Compose di Linux)
+- **Koneksi Internet** (untuk build image pertama kali)
+- **PHP 8.4+** (didukung otomatis di dalam container)
+
+---
+
+## ⚙️ Cara Instalasi (Local Development)
+
+Hanya satu langkah untuk menjalankan semuanya:
 
 ```bash
-cd laravel-auth-ai
-cp .env.example .env
-```
-
-Buka `laravel-auth-ai/.env` dan isi bagian berikut:
-
-```env
-# Wajib diisi — nilai DB harus cocok dengan docker-compose.yml
-DB_PASSWORD=secret123
-DB_ROOT_PASSWORD=rootsecret123
-
-# API Key FastAPI — harus sama persis dengan ai-security/.env
-AI_RISK_API_KEY=ganti-dengan-string-acak-minimal-32-karakter
-
-# SMTP untuk OTP (lihat panduan di bawah)
-MAIL_MAILER=smtp
-MAIL_HOST=sandbox.smtp.mailtrap.io
-MAIL_PORT=2525
-MAIL_USERNAME=isi_dari_mailtrap
-MAIL_PASSWORD=isi_dari_mailtrap
-MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS="noreply@yourcompany.com"
-MAIL_FROM_NAME="Secure Auth"
-```
-
-### FastAPI `.env`
-
-```bash
-cd ../ai-security
-cp .env.example .env
-```
-
-Buka `ai-security/.env` dan isi:
-
-```env
-# Harus sama persis dengan AI_RISK_API_KEY di Laravel
-API_KEY=ganti-dengan-string-acak-minimal-32-karakter
-
-APP_ENV=development
-```
-
----
-
-## Langkah 2 — Cara Mendapatkan Kredensial SMTP
-
-### Opsi A: Mailtrap (Gratis, Untuk Development)
-
-Email tidak benar-benar terkirim — semua tertangkap di dashboard.
-Cocok untuk testing dan development.
-
-1. Buka https://mailtrap.io dan daftar akun gratis
-2. Masuk ke: Email Testing → Inboxes → My Inbox
-3. Klik ikon settings (gear) di sebelah kanan inbox
-4. Pilih tab **SMTP Settings**
-5. Pilih **Laravel** di dropdown Integration
-6. Salin nilai Host, Port, Username, Password ke `.env` Laravel
-
-### Opsi B: Resend (Gratis 3.000 email/bulan, Untuk Production)
-
-1. Daftar di https://resend.com
-2. Verifikasi domain perusahaan Anda (tambahkan DNS TXT record)
-3. Buat API Key di menu API Keys
-4. Install package:
-
-   ```bash
-   cd laravel-auth-ai
-   composer require resend/resend-laravel
-   ```
-
-5. Isi `.env`:
-
-   ```env
-   MAIL_MAILER=resend
-   RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
-   MAIL_FROM_ADDRESS="noreply@domain-anda.com"
-   MAIL_FROM_NAME="Secure Auth"
-   ```
-
-### Opsi C: Gmail SMTP (Hanya Development, Tidak Disarankan Production)
-
-1. Aktifkan 2FA di akun Google Anda
-2. Buka: https://myaccount.google.com/apppasswords
-3. Buat App Password baru (nama: "Laravel")
-4. Salin password 16 karakter yang dihasilkan
-5. Isi `.env`:
-
-   ```env
-   MAIL_MAILER=smtp
-   MAIL_HOST=smtp.gmail.com
-   MAIL_PORT=587
-   MAIL_USERNAME=emailanda@gmail.com
-   MAIL_PASSWORD=abcd efgh ijkl mnop   # App Password dari langkah 4
-   MAIL_ENCRYPTION=tls
-   MAIL_FROM_ADDRESS="emailanda@gmail.com"
-   MAIL_FROM_NAME="Secure Auth"
-   ```
-
----
-
-## Langkah 3 — Jalankan Sistem
-
-### Cara Otomatis (Direkomendasikan)
-
-```bash
-cd secure-system
 chmod +x setup.sh
 ./setup.sh
 ```
 
-Script ini akan:
-- Memeriksa Docker tersedia
-- Menyalin .env.example jika belum ada
-- Build semua Docker image
-- Menjalankan migration database
-- Menjalankan semua service
-- Memverifikasi semua berjalan
+**Apa yang dilakukan script ini?**
+1. Membuat file `.env` dari `.env.example` jika belum ada.
+2. Membangun (build) Docker images.
+3. Menjalankan database dan Redis.
+4. Instalasi dependensi Composer secara aman.
+5. Generate `APP_KEY` dan sinkronisasi `AI_RISK_API_KEY` untuk keamanan API.
+6. Menjalankan migrasi database.
 
-### Cara Manual
+---
+
+## 🌐 Panduan Deployment ke VPS (Production)
+
+Ikuti langkah-langkah ini untuk deploy sistem ini di VPS (Ubuntu 22.04/24.04 disarankan):
+
+### 1. Persiapan Server
+Instal Docker dan Docker Compose lokaly di server:
+```bash
+# Update sistem
+sudo apt update && sudo apt upgrade -y
+
+# Instal Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+```
+
+### 2. Clone & Konfigurasi
+```bash
+git clone https://github.com/your-repo/ai-auth-system.git
+cd ai-auth-system
+```
+
+### 3. Konfigurasi Environment Production
+Pastikan Anda mengubah nilai-nilai berikut di `laravel-auth-ai/.env` untuk keamanan:
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `APP_URL=https://nama-domain-anda.com` (Sangat Penting untuk link Reset Password)
+- `DB_PASSWORD` & `DB_ROOT_PASSWORD` (Gunakan password yang kuat)
+- `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` (Gunakan provider asli seperti Resend/Amazon SES)
+
+### 4. Jalankan Setup Otomatis
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+### 5. Konfigurasi SSL (Nginx & Certbot)
+Sangat disarankan menggunakan Nginx di server host sebagai Reverse Proxy ke port 8080:
 
 ```bash
-# 1. Build images
-docker compose build
+# Instal Nginx & Certbot
+sudo apt install nginx certbot python3-certbot-nginx -y
 
-# 2. Jalankan database dan redis dulu
-docker compose up -d db redis
-
-# 3. Tunggu database siap (sekitar 15 detik)
-sleep 15
-
-# 4. Generate APP_KEY Laravel
-docker compose run --rm app php artisan key:generate
-
-# 5. Jalankan migration
-docker compose run --rm app php artisan migrate --force
-
-# 6. Jalankan semua service
-docker compose up -d
-
-# 7. Lihat status
-docker compose ps
+# Konfigurasi Virtual Host Nginx ke http://localhost:8080
+# Lalu aktifkan SSL
+sudo certbot --nginx -d nama-domain-anda.com
 ```
 
 ---
 
-## Langkah 4 — Verifikasi Sistem Berjalan
+## 🔐 Manajemen API Key
 
-### Cek semua service
-
-```bash
-docker compose ps
-```
-
-Output yang diharapkan:
-```
-NAME                    STATUS          PORTS
-secure-system-app-1     Up              9000/tcp
-secure-system-nginx-1   Up              0.0.0.0:8080->80/tcp
-secure-system-worker-1  Up
-secure-system-fastapi-1 Up (healthy)
-secure-system-db-1      Up (healthy)    0.0.0.0:3306->3306/tcp
-secure-system-redis-1   Up (healthy)    0.0.0.0:6379->6379/tcp
-```
-
-### Cek FastAPI
+Sistem ini menggunakan kunci rahasia untuk komunikasi antara Laravel dan AI Service. Anda bisa me-rotate kunci ini kapan saja:
 
 ```bash
-curl http://localhost:8000/health
+docker compose run --rm app php artisan ai:generate-key
+docker compose restart fastapi-risk
 ```
-
-Respons yang diharapkan:
-```json
-{
-  "status": "ok",
-  "model_loaded": false,
-  "version": "1.0.0"
-}
-```
-
-`model_loaded: false` adalah normal — sistem berjalan dengan rule-based fallback.
-
-### Test Login API
-
-```bash
-# Test dengan kredensial salah — harus dapat 401
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"wrongpassword"}'
-```
+*Perintah ini akan memperbarui kedua file `.env` secara otomatis.*
 
 ---
 
-## Langkah 5 — Buat User Pertama
+## 📊 Monitoring & Log
 
-```bash
-# Masuk ke tinker Laravel
-docker compose exec app php artisan tinker
-
-# Di dalam tinker, buat user pertama:
-App\Models\User::create([
-    'name'     => 'Admin',
-    'email'    => 'admin@example.com',
-    'password' => 'P@ssw0rd1234',  // Akan otomatis di-hash Argon2id
-    'is_active' => true,
-]);
-```
-
-### Test Login Lengkap
-
-```bash
-# Login — harusnya dapat ALLOW atau OTP tergantung sinyal risiko
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@example.com",
-    "password": "P@ssw0rd1234"
-  }'
-```
-
-Jika respons adalah `requires_otp: true`, cek email di Mailtrap dashboard.
-Lalu verifikasi OTP:
-
-```bash
-curl -X POST http://localhost:8080/api/auth/otp/verify \
-  -H "Content-Type: application/json" \
-  -d '{
-    "session_token": "token_dari_respons_login",
-    "otp_code": "123456"
-  }'
-```
+- **Log Aplikasi**: `docker compose logs -f app`
+- **Log Keamanan**: `docker compose exec app tail -f storage/logs/security.log`
+- **Log AI Service**: `docker compose logs -f fastapi-risk`
 
 ---
 
-## Memantau Log
+## 🤝 Kontribusi
 
-```bash
-# Log Laravel (aplikasi)
-docker compose logs -f app
-
-# Log queue worker (pengiriman OTP)
-docker compose logs -f worker
-
-# Log FastAPI (penilaian risiko)
-docker compose logs -f fastapi-risk
-
-# Log keamanan khusus (di dalam container)
-docker compose exec app tail -f storage/logs/security.log
-```
+Sistem ini masih dalam pengembangan. Jika menemukan celah keamanan, silakan baca `security_audit.md` untuk perbaikan yang disarankan.
 
 ---
-
-## Menghentikan & Membersihkan
-
-```bash
-# Hentikan semua service (data tersimpan)
-docker compose down
-
-# Hentikan dan hapus semua data (reset total)
-docker compose down -v
-```
-
----
-
-## Troubleshooting Umum
-
-### Email OTP tidak terkirim
-
-```bash
-# Cek log worker
-docker compose logs worker
-
-# Cek apakah queue berjalan
-docker compose exec app php artisan queue:monitor
-```
-
-Kemungkinan penyebab:
-- Kredensial SMTP salah di `.env`
-- Worker tidak berjalan (`docker compose ps` untuk cek)
-- Queue driver bukan redis (pastikan `QUEUE_CONNECTION=redis`)
-
-### FastAPI tidak merespons
-
-```bash
-docker compose logs fastapi-risk
-```
-
-Kemungkinan penyebab:
-- File `.env` FastAPI belum diisi
-- `API_KEY` kosong
-
-### Database connection error
-
-```bash
-docker compose logs db
-```
-
-Kemungkinan penyebab:
-- Database belum selesai startup saat migration dijalankan
-- Solusi: `docker compose restart app` setelah db healthy
-
-### OTP selalu mengatakan "sesi tidak valid"
-
-Pastikan `session_token` yang dikirim ke `/otp/verify` persis sama
-dengan yang diterima dari respons `/login`. Token ini case-sensitive
-dan harus dikirim dalam 5 menit.
+*Developed with Security-First Mindset*

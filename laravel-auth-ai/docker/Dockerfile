@@ -4,29 +4,19 @@
 
 FROM php:8.4-fpm-alpine AS base
 
-# -- Instalasi ekstensi PHP yang diperlukan
-RUN apk update && apk add --no-cache \
-        $PHPIZE_DEPS \
-        libpng-dev \
-        libjpeg-turbo-dev \
-        libwebp-dev \
-        libzip-dev \
-        oniguruma-dev \
-        icu-dev \
-        linux-headers \
-    && docker-php-ext-configure gd --with-jpeg --with-webp \
-    && docker-php-ext-install \
-        pdo_mysql \
-        mbstring \
-        zip \
-        gd \
-        intl \
-        opcache \
-    && pecl install redis \
-    && docker-php-ext-enable redis
+# -- Install PHP Extension Installer (Standard terbaik untuk Docker PHP)
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
-# -- Cleanup build dependencies
-RUN apk del $PHPIZE_DEPS
+# -- Instalasi ekstensi PHP yang diperlukan
+# Script ini otomatis menangani library (libpng, libzip, dll) dan pembersihan
+RUN install-php-extensions \
+    pdo_mysql \
+    mbstring \
+    zip \
+    gd \
+    intl \
+    opcache \
+    redis
 
 # -- Install Composer ke base image
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
