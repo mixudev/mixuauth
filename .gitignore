@@ -21,3 +21,6 @@ ai-security/venv
 # vendor
 /vendor
 
+# ENV
+.env
+
