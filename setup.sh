@@ -87,6 +87,10 @@ sleep 15
 # ----------------------------------------------------------
 # Setup Laravel
 # ----------------------------------------------------------
+log_info "Menyiapkan direktori storage di dalam container..."
+docker compose run --rm -u root app mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs
+docker compose run --rm -u root app chown -R www-data:www-data storage
+
 log_info "Instal dependensi PHP (composer)..."
 docker compose run --rm -u root app sh -c "composer install --no-interaction --optimize-autoloader && chown -R www-data:www-data vendor"
 
