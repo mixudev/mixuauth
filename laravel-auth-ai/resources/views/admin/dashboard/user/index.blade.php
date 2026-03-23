@@ -280,7 +280,20 @@ $colorMap = [
             headers : { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
         };
         if (data) opts.body = JSON.stringify(data);
-        return fetch(url, opts).then(function(r){ return r.json(); });
+        return fetch(url, opts).then(function(r){ 
+            if (r.status === 422) {
+                return r.json().then(function(data) {
+                    // Extract the first error message if validation failed
+                    var firstError = data.message;
+                    if (data.errors) {
+                        var keys = Object.keys(data.errors);
+                        if (keys.length > 0) firstError = data.errors[keys[0]][0];
+                    }
+                    return { success: false, message: firstError };
+                });
+            }
+            return r.json(); 
+        });
     }
 
     // ── Filter form ───────────────────────────────────────────────────────────

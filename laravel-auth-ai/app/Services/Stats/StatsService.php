@@ -10,6 +10,7 @@ use App\Models\IpBlacklist;
 use App\Models\IpWhitelist;
 use App\Models\OtpVerification;
 use App\Models\UserBlock;
+use App\Models\SecurityNotification;
 
 class StatsService
 {
@@ -25,7 +26,9 @@ class StatsService
                 'IpBlacklist'     => IpBlacklist::count(),
                 'IpWhitelist'     => IpWhitelist::count(),
                 'OtpCount'        => OtpVerification::count(),
-                'UserBlock'       => UserBlock::count(),                
+                'UserBlock'       => UserBlock::count(),
+                'securityNotifications' => SecurityNotification::unread()->count(),
+                
 
             ]
         );

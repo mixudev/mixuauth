@@ -1,56 +1,73 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\Dashboard\DashboardController;
 use App\Http\Controllers\Admin\Dashboard\UserManagementController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\Dashboard\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
-| Dashboard & Security Routes
-| File: routes/web.php (tambahkan route ini)
+| Dashboard Routes
 |--------------------------------------------------------------------------
-|
-| Semua route dashboard dilindungi middleware auth.
-| Jika pakai Spatie Permission, tambahkan ->middleware('role:admin').
-|
 */
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified'])
+    ->prefix('dashboard')
+    ->group(function () {
 
-    // Dashboard utama
-    Route::get('/dashboard', [DashboardController::class, 'index'])
-        ->name('dashboard');
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard Home
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/', [DashboardController::class, 'index'])
+            ->name('dashboard');
 
-    // Placeholder routes yang direferensikan di Blade
-    // Ganti controller sesuai implementasi masing-masing
-    Route::get('/security/logs', fn () => view('security.logs'))
-        ->name('security.logs');
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard - User Management
+        |--------------------------------------------------------------------------
+        */
+        Route::name('dashboard.users.')
+            ->prefix('users')
+            ->controller(UserManagementController::class)
+            ->group(function () {
 
-    Route::get('/security/blacklist', fn () => view('security.blacklist'))
-        ->name('security.blacklist');
+                // Index
+                Route::get('/', 'index')->name('index');
 
-    Route::get('/security/notifications', fn () => view('security.notifications'))
-        ->name('security.notifications');
+                // CRUD
+                Route::post('/', 'store')->name('store');
+                Route::put('/{user}', 'update')->name('update');
+                Route::delete('/{user}', 'destroy')->name('destroy');
 
-    Route::prefix('dashboard/users')->name('dashboard.users.')->group(function () {
+                // Account Controls
+                Route::post('/{user}/block', 'block')->name('block');
+                Route::post('/{user}/unblock', 'unblock')->name('unblock');
+                Route::post('/{user}/reset-password', 'resetPassword')
+                    ->name('reset-password');
 
-        // Index (halaman + list)
-        Route::get('/', [UserManagementController::class, 'index'])->name('index');
+                // Bulk
+                Route::post('/bulk', 'bulkAction')->name('bulk');
+            });
 
-        // CRUD
-        Route::post('/',            [UserManagementController::class, 'store'])->name('store');
-        Route::put('/{user}',       [UserManagementController::class, 'update'])->name('update');
-        Route::delete('/{user}',    [UserManagementController::class, 'destroy'])->name('destroy');
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard - Notifications API
+        |--------------------------------------------------------------------------
+        */
+        Route::name('dashboard.notifications.')
+            ->prefix('api/notifications')
+            ->controller(NotificationController::class)
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/read-all', 'markAsRead')->name('read-all');
+                Route::post('/{notification}/read', 'markOneRead')->name('mark-read');
+                Route::delete('/{notification}', 'delete')->name('delete');
+            });
 
-        // Block / Unblock
-        Route::post('/{user}/block',   [UserManagementController::class, 'block'])->name('block');
-        Route::post('/{user}/unblock', [UserManagementController::class, 'unblock'])->name('unblock');
+        Route::get('/notifications', [NotificationController::class, 'all'])
+            ->name('dashboard.notifications.all');
 
-        // Reset password
-        Route::post('/{user}/reset-password', [UserManagementController::class, 'resetPassword'])->name('reset-password');
 
-        // Bulk actions
-        Route::post('/bulk', [UserManagementController::class, 'bulkAction'])->name('bulk');
     });
-
-});

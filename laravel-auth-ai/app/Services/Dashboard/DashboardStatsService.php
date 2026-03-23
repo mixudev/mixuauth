@@ -159,7 +159,7 @@ class DashboardStatsService
     public function getUnreadNotificationCount(): int
     {
         return Cache::remember('dash:notif:unread_count', 60, fn () =>
-            SecurityNotification::where('is_read', false)->count()
+            SecurityNotification::unread()->count()
         );
     }
 
@@ -169,7 +169,7 @@ class DashboardStatsService
     public function getCriticalAlerts()
     {
         return Cache::remember('dash:notif:critical', 60, fn () =>
-            SecurityNotification::where('is_read', false)
+            SecurityNotification::unread()
                 ->where('type', 'error')
                 ->where('created_at', '>=', now()->subHour())
                 ->orderByDesc('created_at')
@@ -181,7 +181,7 @@ class DashboardStatsService
     public function getRecentNotifications()
     {
         return Cache::remember('dash:notif:recent', 60, fn () =>
-            SecurityNotification::where('is_read', false)
+            SecurityNotification::unread()
                 ->orderByDesc('created_at')
                 ->limit(4)
                 ->get()

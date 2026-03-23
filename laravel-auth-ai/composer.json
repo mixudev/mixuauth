@@ -27,7 +27,8 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Helpers/NumberHelper.php"
+            "app/Helpers/NumberHelper.php",
+            "app/Helpers/timezone_helpers.php"
         ]
     },
     "autoload-dev": {

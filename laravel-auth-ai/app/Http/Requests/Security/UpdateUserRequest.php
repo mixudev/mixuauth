@@ -16,7 +16,7 @@ class UpdateUserRequest extends FormRequest
         return [
             'name'           => ['required', 'string', 'max:255'],
             'email'          => ['required', 'email', 'max:255', "unique:users,email,{$userId}"],
-            'password'       => ['nullable', Password::min(8)->letters()->numbers()],
+            'password'       => ['nullable', Password::min(8)],
             'is_active'      => ['boolean'],
             'email_verified' => ['boolean'],
         ];

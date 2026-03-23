@@ -31,6 +31,25 @@ class OtpVerification extends Model
         'attempts'    => 'integer',
     ];
 
+    protected static function booted()
+    {
+        static::updated(function ($otp) {
+            // Monitor OTP Exhaustion
+            if ($otp->wasChanged('attempts') && $otp->isExhausted()) {
+                \App\Models\SecurityNotification::create([
+                    'user_id'    => $otp->user_id,
+                    'type'       => 'error',
+                    'event'      => 'auth.otp_exhausted',
+                    'title'      => 'Percobaan OTP Habis',
+                    'message'    => 'Percobaan verifikasi OTP untuk user telah mencapai batas maksimal (Suspicious).',
+                    'meta'       => ['attempts' => $otp->attempts, 'user_id' => $otp->user_id],
+                    'ip_address' => $otp->ip_address ?? request()->ip(),
+                    'user_agent' => request()->userAgent(),
+                ]);
+            }
+        });
+    }
+
     protected $hidden = [
         'token', // Hash OTP tidak boleh terekspos ke luar
     ];

@@ -66,6 +66,18 @@ class AiRiskClientService
                 'error'   => $e->getMessage(),
                 'base_url' => $baseUrl,
             ]);
+
+            // Notify Admin about system failure
+            \App\Models\SecurityNotification::create([
+                'user_id'    => null, // Global/Admin Alert
+                'type'       => 'error',
+                'event'      => 'system.ai_service_down',
+                'title'      => 'Layanan AI Offline',
+                'message'    => 'Sistem gagal terhubung ke FastAPI Risk Service. Memasuki mode deteksi fallback (Rule-based).',
+                'meta'       => ['error' => $e->getMessage(), 'url' => $baseUrl],
+                'ip_address' => request()->ip(),
+            ]);
+
             throw new \RuntimeException('Layanan AI tidak dapat dijangkau: ' . $e->getMessage(), 0, $e);
 
         } catch (\Illuminate\Http\Client\RequestException $e) {

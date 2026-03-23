@@ -310,7 +310,7 @@
 
         async function clearNotifs() {
             try {
-                await fetch('/dashboard/api/notifications/read', {
+                await fetch('/dashboard/api/notifications/read-all', {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
                 });
@@ -346,6 +346,27 @@
                     el.textContent = shortNumber(raw);
                 }
             });
+
+            // ─── CLOCK UPDATE
+            const clockEl = document.getElementById('header-clock');
+            if (clockEl) {
+                const tz = '{{ app(\App\Services\TimezoneService::class)->getUserTimezone() }}';
+                const formatter = new Intl.DateTimeFormat('en-GB', {
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    hour12: false, timeZone: tz
+                });
+                
+                const updateClock = () => {
+                    try {
+                        // Hilangkan detik jika user hanya minta H:i, tapi di sini saya kasih H:i:s biar keren
+                        // Kalau mau H:i saja, hapus second: '2-digit' di atas
+                        clockEl.textContent = formatter.format(new Date());
+                    } catch (e) { console.error('Clock error', e); }
+                };
+                
+                updateClock();
+                setInterval(updateClock, 1000); // Update setiap detik
+            }
         });
         
     </script>

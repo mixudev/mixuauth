@@ -48,7 +48,7 @@
                             </span>
                         </td>
                         <td class="px-5 py-2.5 text-right hidden lg:table-cell">
-                            <span class="text-slate-400 dark:text-slate-600 tabular-nums">{{ $log->occurred_at?->diffForHumans() }}</span>
+                            <span class="text-slate-400 dark:text-slate-600 tabular-nums">@humanstime($log->occurred_at)</span>
                         </td>
                     </tr>
                     @empty
@@ -105,7 +105,7 @@
                     </div>
                     <div class="min-w-0 flex-1">
                         <p class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{{ $notif->title }}</p>
-                        <p class="text-[10px] text-slate-400 dark:text-slate-600 truncate">{{ $notif->created_at?->diffForHumans() }}</p>
+                        <p class="text-[10px] text-slate-400 dark:text-slate-600 truncate">@humanstime($notif->created_at)</p>
                     </div>
                 </div>
                 @empty

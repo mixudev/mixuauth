@@ -138,6 +138,20 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{{ route('dashboard.notifications.all') }}" data-page="notifications" class="sidebar-link {{ request()->routeIs('dashboard.notifications.all') ? 'active' : '' }}" aria-label="Notifications">
+                            <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                                <i class="fa-solid fa-bell" style="font-size: 15px;"></i>
+                            </span>
+                            <span class="sidebar-label">Notifications</span>
+                            @if(($statscount['securityNotifications'] ?? 0) > 0)
+                            <span class="sidebar-badge ml-auto text-[10px] font-mono bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-md">
+                                {{ $statscount['securityNotifications'] }}
+                            </span>
+                            @endif
+                            <span class="sidebar-tooltip">Notifications</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="#" data-page="otps" class="sidebar-link " aria-label="OTP Logs">
                             <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
                                 <i class="fa-solid fa-key" style="font-size: 15px;"></i>

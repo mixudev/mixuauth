@@ -8,12 +8,19 @@ use Illuminate\Support\Carbon;
 
 class DashboardChartService
 {
+    public function __construct(
+        private readonly \App\Services\TimezoneService $timezoneService
+    ) {}
+
     private function since(string $period): Carbon
     {
+        // Gunakan now() dalam konteks timezone user agar '24 jam terakhir' tetap akurat
+        $now = to_local(now());
+        
         return match ($period) {
-            '24h'  => now()->subDay(),
-            '30d'  => now()->subDays(30),
-            default => now()->subDays(7),
+            '24h'  => $now->copy()->subDay(),
+            '30d'  => $now->copy()->subDays(30),
+            default => $now->copy()->subDays(7),
         };
     }
 
@@ -38,13 +45,15 @@ class DashboardChartService
 
             $since = $this->since($period);
 
+            $tzOffset = $this->getOffsetFromTz(user_tz());
+
             $rows = LoginLog::selectRaw("
-                    DATE(occurred_at) as date,
+                    DATE(CONVERT_TZ(occurred_at, '+00:00', ?)) as date,
                     status,
                     decision,
                     COUNT(*) as total
-                ")
-                ->where('occurred_at', '>=', $since)
+                ", [$tzOffset])
+                ->where('occurred_at', '>=', $since->utc())
                 ->groupBy('date', 'status', 'decision')
                 ->orderBy('date')
                 ->get();
@@ -118,12 +127,14 @@ class DashboardChartService
         return Cache::remember("dash:chart:risk:{$period}", 300, function () use ($period) {
             $since = $this->since($period);
 
+            $tzOffset = $this->getOffsetFromTz(user_tz());
+
             $rows = LoginLog::selectRaw("
-                DATE(occurred_at) as date,
+                DATE(CONVERT_TZ(occurred_at, '+00:00', ?)) as date,
                 ROUND(AVG(risk_score), 1) as avg_risk,
                 MAX(risk_score) as max_risk
-            ")
-            ->where('occurred_at', '>=', $since)
+            ", [$tzOffset])
+            ->where('occurred_at', '>=', $since->utc())
             ->whereNotNull('risk_score')
             ->groupBy('date')
             ->orderBy('date')
@@ -162,23 +173,28 @@ class DashboardChartService
      */
     public function getTodayHourlyStats(): array
     {
-        return Cache::remember('dash:chart:today_hourly', 60, function () {
+        return Cache::remember('dash:chart:today_hourly:' . user_tz(), 60, function () {
+            $userTz = user_tz();
+            
+            // "Hari ini" dihitung berdasarkan timezone user
+            $localNow   = to_local(now());
+            $todayStart = $localNow->copy()->startOfDay()->utc();
+            $todayEnd   = $localNow->copy()->endOfDay()->utc();
 
-            $todayStart = now()->startOfDay();
-            $todayEnd   = now()->endOfDay();
-
+            // Gunakan CONVERT_TZ di SQL agar jam yang di-group adalah jam lokal user
+            // 'UTC' -> $userTz
             $rows = LoginLog::selectRaw("
-                    HOUR(occurred_at) as hour,
+                    HOUR(CONVERT_TZ(occurred_at, '+00:00', ?)) as hour,
                     status,
                     decision,
                     COUNT(*) as total
-                ")
+                ", [$this->getOffsetFromTz($userTz)])
                 ->whereBetween('occurred_at', [$todayStart, $todayEnd])
                 ->groupBy('hour', 'status', 'decision')
                 ->orderBy('hour')
                 ->get();
 
-            // Inisialisasi 24 slot dengan 0
+            // Inisialisasi 24 slot dengan 0 (0-23)
             $success = array_fill(0, 24, 0);
             $otp     = array_fill(0, 24, 0);
             $failed  = array_fill(0, 24, 0);
@@ -186,6 +202,7 @@ class DashboardChartService
 
             foreach ($rows as $row) {
                 $h = (int) $row->hour;
+                if ($h < 0 || $h > 23) continue; // Safety check
 
                 if ($row->status === 'success') {
                     $success[$h] += (int) $row->total;
@@ -195,7 +212,6 @@ class DashboardChartService
                     $blocked[$h] += (int) $row->total;
                 }
 
-                // OTP diambil dari kolom decision (konsisten dengan getLoginActivityChart)
                 if ($row->decision === 'OTP') {
                     $otp[$h] += (int) $row->total;
                 }
@@ -203,5 +219,20 @@ class DashboardChartService
 
             return compact('success', 'otp', 'failed', 'blocked');
         });
+    }
+
+    /**
+     * Helper untuk mendapatkan offset (+07:00) dari nama timezone.
+     * Karena CONVERT_TZ lebih stabil pakai offset dibanding nama (tergantung OS/DB).
+     */
+    private function getOffsetFromTz(string $tzName): string
+    {
+        try {
+            return (new \DateTimeZone($tzName))->getOffset(new \DateTime('now', new \DateTimeZone('UTC'))) / 3600 >= 0 
+                ? '+' . sprintf('%02d:00', (new \DateTimeZone($tzName))->getOffset(new \DateTime('now', new \DateTimeZone('UTC'))) / 3600)
+                : sprintf('%02d:00', (new \DateTimeZone($tzName))->getOffset(new \DateTime('now', new \DateTimeZone('UTC'))) / 3600);
+        } catch (\Exception $e) {
+            return '+00:00';
+        }
     }
 }

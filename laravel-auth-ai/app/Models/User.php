@@ -26,6 +26,7 @@ class User extends Authenticatable
         'is_active',
         'last_login_at',
         'last_login_ip',
+        'timezone',
     ];
 
     /*
@@ -38,6 +39,16 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    /* 
+    |--------------------------------------------------------------------------
+    | Accessor untuk timezone: pastikan selalu ada nilai (default 'UTC')
+    |--------------------------------------------------------------------------
+    */
+    public function getTimezoneAttribute(?string $value): string
+    {
+        return $value ?? 'UTC';
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Konversi tipe kolom otomatis
@@ -49,6 +60,55 @@ class User extends Authenticatable
         'is_active'         => 'boolean',
         'password'          => 'hashed',  // Laravel 11: otomatis hash via bcrypt/argon
     ];
+
+    protected static function booted()
+    {
+        static::updated(function ($user) {
+            // Monitor Password Change
+            if ($user->wasChanged('password')) {
+                \App\Models\SecurityNotification::create([
+                    'user_id'    => $user->id,
+                    'type'       => 'warning',
+                    'event'      => 'account.password_changed',
+                    'title'      => 'Sensitive: Password Diganti',
+                    'message'    => 'Password untuk user ' . $user->name . ' (' . $user->email . ') telah diperbarui.',
+                    'meta'       => ['field' => 'password'],
+                    'ip_address' => request()->ip(),
+                    'user_agent' => request()->userAgent(),
+                ]);
+            }
+
+            // Monitor Email Change
+            if ($user->wasChanged('email')) {
+                \App\Models\SecurityNotification::create([
+                    'user_id'    => $user->id,
+                    'type'       => 'warning',
+                    'event'      => 'account.email_changed',
+                    'title'      => 'Sensitive: Email Diganti',
+                    'message'    => 'Email user ' . $user->getOriginal('name') . ' diubah dari ' . $user->getOriginal('email') . ' menjadi ' . $user->email,
+                    'meta'       => [
+                        'old_email' => $user->getOriginal('email'),
+                        'new_email' => $user->email
+                    ],
+                    'ip_address' => request()->ip(),
+                    'user_agent' => request()->userAgent(),
+                ]);
+            }
+        });
+
+        static::deleted(function ($user) {
+            \App\Models\SecurityNotification::create([
+                'user_id'    => $user->id,
+                'type'       => 'error',
+                'event'      => 'account.deleted',
+                'title'      => 'User Dihapus',
+                'message'    => 'Akun user ' . $user->name . ' (' . $user->email . ') telah dihapus dari sistem.',
+                'meta'       => ['deleted_at' => now()],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+        });
+    }
 
     // -----------------------------------------------------------------------
     // Relasi

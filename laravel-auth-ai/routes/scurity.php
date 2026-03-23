@@ -57,3 +57,21 @@ Route::prefix('/dev/monitoring')->name('dev.monitoring.')->group(function () {
     Route::post('/api/ip-whitelist',       [DevIpWhitelistController::class, 'store'])->name('api.whitelist.store');
     Route::delete('/api/ip-whitelist/{ip}',[DevIpWhitelistController::class, 'destroy'])->name('api.whitelist.destroy');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Security Pages (View Only / Placeholder)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('security')->name('security.')->group(function () {
+
+    Route::get('/logs', fn () => view('security.logs'))
+        ->name('logs');
+
+    Route::get('/blacklist', fn () => view('security.blacklist'))
+        ->name('blacklist');
+
+    Route::get('/notifications', fn () => view('security.notifications'))
+        ->name('notifications');
+
+});

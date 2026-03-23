@@ -1,6 +1,5 @@
 # ============================================================
 # Dockerfile untuk Laravel 11 — Production-ready
-# Multi-stage build untuk meminimalkan ukuran image final.
 # ============================================================
 
 FROM php:8.3-fpm-alpine AS base
@@ -15,7 +14,6 @@ RUN apk update && apk add --no-cache \
         oniguruma-dev \
         icu-dev \
         linux-headers \
-        # php83-pecl-redis \
     && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install \
         pdo_mysql \
@@ -29,6 +27,9 @@ RUN apk update && apk add --no-cache \
 
 # -- Cleanup build dependencies
 RUN apk del $PHPIZE_DEPS
+
+# -- Install Composer ke base image
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # -- Konfigurasi PHP untuk production
 COPY laravel-auth-ai/docker/php/php.ini /usr/local/etc/php/conf.d/app.ini
@@ -45,13 +46,11 @@ WORKDIR /app
 
 COPY laravel-auth-ai/composer.json laravel-auth-ai/composer.lock ./
 
-# Install dependencies tanpa dev packages dan tanpa autoloader
 RUN composer install \
     --no-dev \
     --no-interaction \
     --no-progress \
     --prefer-dist \
-    --optimize-autoloader \
     --no-scripts
 
 # ============================================================
@@ -61,22 +60,14 @@ FROM base AS production
 
 WORKDIR /var/www/html
 
-# Salin source code aplikasi DULU
 COPY laravel-auth-ai/ .
 
-# Salin vendor dari stage deps SETELAH source code
-# (menimpa vendor yang mungkin ada di source dengan hasil composer install)
 COPY --from=deps /app/vendor ./vendor
 
-# -- Permission: storage dan bootstrap/cache harus writable
+# -- Permission
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# -- Catatan: artisan cache (config:cache, route:cache, dll.) TIDAK dijalankan
-#    saat build karena membutuhkan koneksi DB dan .env yang lengkap.
-#    Jalankan setelah container up via setup.sh atau docker compose exec.
-
-# -- Jalankan sebagai www-data (bukan root)
 USER www-data
 
 EXPOSE 9000

@@ -99,6 +99,19 @@
 
                 <div class="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
+                <!-- Clock Section -->
+                <div class="hidden sm:flex flex-col items-end px-3 py-1 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                    <div class="flex items-center gap-1.5">
+                        <svg class="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span id="header-clock" class="text-xs font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+                            @localtimef(now(), 'H:i')
+                        </span>
+                    </div>
+                    <span class="text-[9px] text-slate-400 font-medium uppercase tracking-wider">@timezone</span>
+                </div>
+
                 <!-- Profile -->
                 <div class="relative" id="profileDropdownWrapper">
                     <button onclick="toggleDropdown()"

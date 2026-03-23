@@ -40,6 +40,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
+
+        // Deteksi timezone untuk semua request web
+        $middleware->web(append: [
+            \App\Http\Middleware\TimezoneMiddleware::class,
+        ]);
+
     })
     ->withExceptions(function (Exceptions $exceptions) {
 
@@ -49,8 +55,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 return \App\Exceptions\ApiExceptionHandler::render($e);
             }
         });
+
     })
+    
     ->withProviders([
         App\Providers\DashboardServiceProvider::class,
+        App\Providers\TimezoneServiceProvider::class,
+
     ])
     ->create();

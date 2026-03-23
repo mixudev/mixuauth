@@ -92,7 +92,9 @@
                     {{-- Login terakhir --}}
                     <td class="px-3 py-3 hidden xl:table-cell">
                         <span class="font-mono text-slate-400 dark:text-slate-600 text-[10px]">
-                            {{ $user->last_login_at ? $user->last_login_at->diffForHumans() : '—' }}
+                            {{ $user->last_login_at ? local_time($user->last_login_at) : '—' }}
+
+
                         </span>
                     </td>
 

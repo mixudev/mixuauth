@@ -277,6 +277,16 @@ php artisan test --coverage
 
 ---
 
+# Jika terjadi eror Laravel\Pail
+- Jalankan        : docker exec -it ai-auth-02-app-1 sh
+- Lalu jalankan   : rm -f bootstrap/cache/*.php
+- atau bisa ini : rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+
+
+# Perintah Restart App Laravel
+- docker restart ai-auth-02-app-1
+digunakan semisal ada perubahan kita restart container
+
 ## Pertimbangan Keamanan Produksi
 
 1. **Argon2id** dikonfigurasi via `config/hashing.php` — sesuaikan `memory` dengan kapasitas server

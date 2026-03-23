@@ -66,15 +66,49 @@ class LoginLog extends Model
             // Automatically log to security_notifications for failed/blocked actions
             if (in_array($log->status, [self::STATUS_FAILED, self::STATUS_BLOCKED, self::STATUS_OTP])) {
                 $type = 'warning';
+                $title = 'Peringatan Keamanan';
+                $event = 'auth.' . $log->status;
+                
+                // Hitung percobaan gagal baru-baru ini untuk konteks pesan yang lebih baik
+                $recentFailures = static::where('email_attempted', $log->email_attempted)
+                    ->whereIn('status', [self::STATUS_FAILED, self::STATUS_BLOCKED])
+                    ->where('occurred_at', '>=', now()->subHours(1))
+                    ->count();
+
                 if ($log->status === self::STATUS_BLOCKED) {
                     $type = 'error';
+                    $title = 'Akses Dicekal (Block)';
+                    $message = "Upaya login ke akun ({$log->email_attempted}) telah diblokir secara otomatis demi keamanan.";
+                } elseif ($log->status === self::STATUS_FAILED) {
+                    $title = 'Percobaan Login Gagal';
+                    $message = "Terdeteksi percobaan login gagal ke akun ({$log->email_attempted}). Total percobaan dalam 1 jam terakhir: {$recentFailures}.";
+                    
+                    if ($recentFailures >= 3) {
+                        $title = 'Percobaan Login Berulang';
+                        $type = 'error';
+                    }
+                } elseif ($log->status === self::STATUS_OTP) {
+                    $type = 'info';
+                    $title = 'Butuh Verifikasi OTP';
+                    $message = "Login ke akun ({$log->email_attempted}) memerlukan verifikasi OTP tambahan.";
+                } else {
+                    $message = "Aktivitas login mencurigakan terdeteksi pada akun ({$log->email_attempted}).";
                 }
                 
                 \App\Models\SecurityNotification::create([
-                    'type' => $type,
-                    'title' => 'Peringatan Keamanan. Status: ' . strtoupper($log->status),
-                    'message' => 'Upaya login ke akun (' . ($log->email_attempted ?? 'Unknown') . ') dari IP ' . $log->ip_address,
+                    'user_id'    => $log->user_id, // NULL if email/user not found (becomes Admin Alert)
+                    'type'       => $type,
+                    'event'      => $event,
+                    'title'      => $title,
+                    'message'    => $message,
+                    'meta'       => [
+                        'risk_score'       => $log->risk_score,
+                        'recent_failures'  => $recentFailures,
+                        'reason_flags'     => $log->reason_flags,
+                        'decision'         => $log->decision,
+                    ],
                     'ip_address' => $log->ip_address,
+                    'user_agent' => $log->user_agent,
                 ]);
             }
         });
