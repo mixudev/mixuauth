@@ -69,5 +69,28 @@ Route::middleware(['auth'])
         Route::get('/notifications', [NotificationController::class, 'all'])
             ->name('dashboard.notifications.all');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Dashboard - Profile
+        |--------------------------------------------------------------------------
+        */
+        Route::controller(\App\Http\Controllers\Admin\Dashboard\ProfileController::class)
+            ->prefix('profile')
+            ->name('dashboard.profile.')
+            ->group(function () {
+                // Satu route untuk semua panel (panel via ?panel=xxx)
+                Route::get('/', 'show')->name('show');
 
+                // Aksi form
+                Route::post('/update', 'update')->name('update');
+                Route::post('/password', 'updatePassword')->name('password');
+                Route::post('/password/reset', 'requestPasswordReset')->name('password.reset_request');
+                Route::post('/preferences', 'updatePreferences')->name('preferences.update');
+                Route::delete('/devices/{device}', 'revokeDevice')->name('devices.revoke');
+
+                // MFA (JSON API)
+                Route::get('/mfa/setup', 'setupMfa')->name('mfa.setup');
+                Route::post('/mfa/confirm', 'confirmMfa')->name('mfa.confirm');
+                Route::post('/mfa/disable', 'disableMfa')->name('mfa.disable');
+            });
     });

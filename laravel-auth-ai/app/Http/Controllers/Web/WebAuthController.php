@@ -52,18 +52,18 @@ class WebAuthController extends Controller
 
         $data = $response->json();
 
-        // ── OTP required ──────────────────────────────────────────────────
-        if ($response->status() === 202 && isset($data['requires_otp'])) {
-            // Simpan timezone ke session OTP agar bisa dipakai setelah verify
-            // _timezone dikirim dari hidden input form (lihat fix di blade)
+        // ── MFA required ──────────────────────────────────────────────────
+        if ($response->status() === 202 && (isset($data['requires_mfa']) || isset($data['requires_otp']))) {
+            // Simpan data MFA ke session
             session([
-                'otp_session_token' => $data['session_token'],
-                'otp_expires_in'    => $data['expires_in'],
-                'otp_email'         => $request->email,
-                'otp_timezone'      => $request->input('_timezone'), // ← simpan untuk dipakai di verifyOtp
+                'mfa_session_token' => $data['session_token'],
+                'mfa_expires_in'    => $data['expires_in'],
+                'mfa_type'          => $data['mfa_type'] ?? 'email',
+                'mfa_email'         => $request->email,
+                'mfa_timezone'      => $request->input('_timezone'),
             ]);
 
-            return redirect()->route('otp.verify')
+            return redirect()->route('auth.mfa.verify')
                 ->with('info', $data['message']);
         }
 
@@ -128,22 +128,25 @@ class WebAuthController extends Controller
             ->withErrors(['email' => $data['message'] ?? 'Email atau password salah.']);
     }
 
-    public function showOtp()
+    public function showMfaVerify()
     {
-        if (! session('otp_session_token')) {
+        if (! session('mfa_session_token')) {
             return redirect()->route('login');
         }
 
-        return view('auth.otp');
+        return view('auth.mfa', [
+            'email'      => session('mfa_email'),
+            'type'       => session('mfa_type', 'email'),
+            'expires_in' => session('mfa_expires_in'),
+        ]);
     }
 
-    public function verifyOtp(Request $request)
+    public function verifyMfa(Request $request)
     {
         $request->validate([
-            'otp_code' => 'required|digits:6',
+            'code' => 'required|string',
         ]);
 
-        // Target host untuk cookie
         $apiHost = parse_url($this->apiBase, PHP_URL_HOST);
 
         $response = Http::withHeaders([
@@ -151,9 +154,9 @@ class WebAuthController extends Controller
         ])
         ->withCookies($request->cookies->all(), $apiHost)
         ->asForm()
-        ->post($this->apiBase . '/auth/otp/verify', [
-            'session_token' => session('otp_session_token'),
-            'otp_code'      => $request->otp_code,
+        ->post($this->apiBase . '/auth/mfa/verify', [
+            'session_token' => session('mfa_session_token'),
+            'code'          => $request->code,
         ]);
 
         $data = $response->json();
@@ -163,26 +166,21 @@ class WebAuthController extends Controller
 
             if ($user) {
                 Auth::login($user);
-
-                // ── FIX BUG #3: sync timezone setelah OTP berhasil ────────
-                // Ambil timezone dari session yang disimpan saat form login
-                // (karena OTP form tidak punya hidden input timezone)
-                $timezoneFromSession = session('otp_timezone');
-                $this->syncTimezoneAfterLogin($request, $user, $timezoneFromSession);
+                $this->syncTimezoneAfterLogin($request, $user, session('mfa_timezone'));
             }
 
-            // Hapus semua data sesi OTP
             session()->forget([
-                'otp_session_token',
-                'otp_expires_in',
-                'otp_email',
-                'otp_timezone',
+                'mfa_session_token',
+                'mfa_type',
+                'mfa_expires_in',
+                'mfa_email',
+                'mfa_timezone',
             ]);
 
             $redirect = redirect()->route('dashboard')
                 ->with('success', 'Verifikasi berhasil. Selamat datang!');
 
-            // ── PROPAGASI COOKIE: Ambil device_trust_id dari API dan teruskan ke Browser ──
+            // Propagasi trusted device cookie
             $apiCookie = null;
             foreach ($response->cookies() as $cookie) {
                 if ($cookie->getName() === 'device_trust_id') {
@@ -193,15 +191,7 @@ class WebAuthController extends Controller
 
             if ($apiCookie) {
                 $redirect->withCookie(cookie(
-                    'device_trust_id',
-                    $apiCookie,
-                    60 * 24 * 30,
-                    '/',
-                    null,
-                    $request->isSecure(),
-                    true,
-                    false,
-                    'Lax'
+                    'device_trust_id', $apiCookie, 60 * 24 * 30, '/', null, $request->isSecure(), true, false, 'Lax'
                 ));
             }
 
@@ -209,7 +199,7 @@ class WebAuthController extends Controller
         }
 
         return back()->withErrors([
-            'otp_code' => $data['message'] ?? 'Kode OTP tidak valid atau sudah kedaluwarsa.',
+            'code' => $data['message'] ?? 'Kode verifikasi tidak valid atau sudah kedaluwarsa.',
         ]);
     }
 

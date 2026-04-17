@@ -202,6 +202,15 @@
                             <span class="sidebar-tooltip">API Keys</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('dashboard.profile.show') }}" data-page="profile" class="sidebar-link {{ request()->routeIs('dashboard.profile.*') ? 'active' : '' }}" aria-label="My Profile">
+                            <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                                <i class="fa-solid fa-user-gear" style="font-size: 15px;"></i>
+                            </span>
+                            <span class="sidebar-label">My Profile</span>
+                            <span class="sidebar-tooltip">My Profile</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
             <div>
@@ -281,7 +290,7 @@
                     class="flex items-center gap-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-all duration-300">
                     <div
                         class="w-8 h-8 flex-shrink-0">
-                        <img src="https://i.pravatar.cc/300" alt="Avatar" class="w-full h-full rounded-full object-cover">
+                        <img src="{{ auth()->user()->avatar_url }}" alt="Avatar" class="w-full h-full rounded-full object-cover border border-slate-200 dark:border-slate-700">
                     </div>
                     <div class="sidebar-user-info overflow-hidden flex-1">
                         <div class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate whitespace-nowrap">

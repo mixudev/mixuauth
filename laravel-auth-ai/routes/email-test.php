@@ -117,7 +117,7 @@ Route::get('/email-test/welcome', function () use ($dummy) {
         userName:       $dummy['userName'],
         userEmail:      $dummy['userEmail'],
         loginUrl:       $dummy['loginUrl'],
-        plan:           $dummy['plan'],
+        // plan:           $dummy['plan'],
         createdAt:      $dummy['createdAt'],
         unsubscribeUrl: $dummy['unsubUrl'],
     );

@@ -37,6 +37,7 @@ class AuthController extends Controller
         private readonly DeviceFingerprintService $fingerprintService,
         private readonly BlockingService          $blockingService,
         private readonly PasswordResetService     $passwordResetService,
+        private readonly \App\Services\Auth\Mfa\MfaManager $mfaManager,
     ) {}
 
     /**
@@ -89,6 +90,28 @@ class AuthController extends Controller
                 return $this->blockedResponse('Akun Anda sedang diblokir sementara. Hubungi administrator.');
             }
 
+            // ── Langkah: Cek Preferensi Keamanan User (OTP) ──
+            if ($user->otp_preference === User::OTP_ALWAYS) {
+                Log::channel('security')->info('MFA dipaksa oleh pengaturan user (Always OTP).', ['user_id' => $user->id]);
+                return $this->handleMfaDecision($request, $user, new \App\DTOs\RiskAssessmentResult(
+                    riskScore: 100,
+                    decision: 'MFA',
+                    reasonFlags: ['user_preference_always'],
+                    rawResponse: ['source' => 'user_settings'],
+                    payload: []
+                ));
+            }
+
+            if ($user->otp_preference === User::OTP_DISABLED) {
+                Log::channel('security')->info('OTP diabaikan oleh pengaturan user (Disabled OTP).', ['user_id' => $user->id]);
+                return $this->handleAllowDecision($request, $user, (object)[
+                    'riskScore'   => 0.0, 
+                    'decision'    => 'ALLOW', 
+                    'reasonFlags' => ['user_preference_disabled'],
+                    'payload'     => []
+                ]);
+            }
+
             // ── Langkah Baru: Fast-Track Perangkat Terpercaya (Whitelist Fingerprint) ──
             // Jika perangkat sudah pernah diverifikasi (Trusted Device) dan masih aktif,
             // kita langsung izinkan login tanpa perlu bertanya pada AI (Skip AI).
@@ -125,7 +148,8 @@ class AuthController extends Controller
 
             return match ($decision) {
                 'ALLOW' => $this->handleAllowDecision($request, $user, $assessment),
-                'OTP'   => $this->handleOtpDecision($request, $user, $assessment),
+                'OTP'   => $this->handleMfaDecision($request, $user, $assessment),
+                'MFA'   => $this->handleMfaDecision($request, $user, $assessment),
                 'BLOCK' => $this->handleBlockDecision($request, $user, $assessment),
                 default => $this->handleBlockDecision($request, $user, $assessment),
             };
@@ -167,35 +191,66 @@ class AuthController extends Controller
     }
 
     /**
-     * POST /auth/otp/verify
+     * POST /auth/mfa/verify
      */
-    public function verifyOtp(VerifyOtpRequest $request): JsonResponse
+    public function verifyMfa(Request $request): JsonResponse
     {
-        $result = $this->otpService->verifyOtp(
-            $request->input('session_token'),
-            $request->input('otp_code')
-        );
+        $request->validate([
+            'session_token' => 'required|string',
+            'code'          => 'required|string',
+        ]);
 
-        if (! $result['success']) {
-            $message = match ($result['reason']) {
-                'expired'               => 'Kode OTP sudah kedaluwarsa. Silakan login ulang.',
-                'max_attempts_exceeded' => 'Batas percobaan OTP terlampaui. Silakan login ulang.',
-                'invalid_session'       => 'Sesi OTP tidak valid atau sudah digunakan.',
-                default                 => 'Kode OTP yang Anda masukkan salah.',
-            };
-
-            $statusCode = in_array($result['reason'], ['expired', 'max_attempts_exceeded', 'invalid_session'])
-                ? Response::HTTP_GONE
-                : Response::HTTP_UNPROCESSABLE_ENTITY;
-
-            return response()->json([
-                'message'    => $message,
-                'error_code' => strtoupper($result['reason']),
-            ], $statusCode);
+        $user = null;
+        // Cari user berdasarkan session token di tabel otp_verifications
+        $otpRecord = \App\Models\OtpVerification::where('session_token', $request->session_token)->first();
+        if ($otpRecord) {
+            $user = User::find($otpRecord->user_id);
         }
 
-        $user = User::findOrFail($result['user_id']);
-        return $this->finalizeLogin($request, $user, true, $result['log_id'] ?? null);
+        if (!$user) {
+            return response()->json([
+                'message'    => 'Sesi verifikasi tidak valid.',
+                'error_code' => 'INVALID_SESSION',
+            ], Response::HTTP_GONE);
+        }
+
+        // ── RELAXED HARDENING: Validasi Perangkat (Signature) ──────────
+        $currentSignature = $this->fingerprintService->getDeviceSignature($request);
+        $currentIp        = $this->fingerprintService->getRealIp($request);
+
+        if ($otpRecord->device_fingerprint !== $currentSignature) {
+            Log::channel('security')->warning('MFA Binding Anomalie: Sesi MFA dicoba dari tanda tangan perangkat berbeda.', [
+                'user_id'             => $user->id,
+                'original_ip'         => $otpRecord->ip_address,
+                'current_ip'          => $currentIp,
+                'original_sig'        => $otpRecord->device_fingerprint,
+                'current_sig'         => $currentSignature,
+                'session_token_start' => substr($request->session_token, 0, 10),
+            ]);
+
+            // NOTE: Kita hanya log peringatan saja (tidak blokir) untuk menghindari False Positive 
+            // akibat konfigurasi Proxy/Docker yang tidak stabil.
+        }
+
+        // Pantau jika IP berubah tapi perangkat sama (Log saja, jangan blokir)
+        if ($otpRecord->ip_address !== $currentIp) {
+            Log::channel('security')->info('MFA IP Shift: User beralih IP saat proses MFA (Normal for mobile).', [
+                'user_id' => $user->id,
+                'old_ip'  => $otpRecord->ip_address,
+                'new_ip'  => $currentIp,
+            ]);
+        }
+
+        $isValid = $this->mfaManager->verify($user, $request->code, $request->session_token);
+
+        if (!$isValid) {
+            return response()->json([
+                'message'    => 'Kode verifikasi salah atau sudah kedaluwarsa.',
+                'error_code' => 'INVALID_CODE',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return $this->finalizeLogin($request, $user, true);
     }
 
     /**
@@ -358,14 +413,14 @@ class AuthController extends Controller
      */
     private function handleTrustedBypass(Request $request, User $user): JsonResponse
     {
-        // Buat objek dummy assessment untuk logging audit
-        $assessment = (object)[
-            'riskScore'    => 0,
-            'decision'     => 'ALLOW',
-            'reasonFlags'  => ['trusted_device_bypass'],
-            'rawResponse'  => ['source' => 'fast_track_whitelist'],
-            'payload'      => []
-        ];
+        // Buat objek dummy assessment menggunakan DTO resmi untuk logging audit
+        $assessment = new \App\DTOs\RiskAssessmentResult(
+            riskScore: 0,
+            decision: 'ALLOW',
+            reasonFlags: ['trusted_device_bypass'],
+            rawResponse: ['source' => 'fast_track_whitelist'],
+            payload: []
+        );
 
         $this->auditService->recordSuccess($request, $user, $assessment);
         $this->clearFailedAttempts($request, $user->email);
@@ -376,24 +431,19 @@ class AuthController extends Controller
         return $this->finalizeLogin($request, $user);
     }
 
-    private function handleOtpDecision(Request $request, User $user, $assessment): JsonResponse
+    private function handleMfaDecision(Request $request, User $user, $assessment): JsonResponse
     {
         $log = $this->auditService->recordOtpRequired($request, $user, $assessment);
 
-        $otpData = $this->otpService->generateOtp(
-            $user,
-            $this->fingerprintService->getRealIp($request),
-            $this->fingerprintService->generate($request),
-            $log->id
-        );
-
-        $this->dispatchOtpNotification($user, $otpData['otp_code']);
+        $mfaData = $this->mfaManager->initiate($user, $request);
 
         return response()->json([
-            'message'       => 'Kode verifikasi telah dikirimkan.',
-            'requires_otp'  => true,
-            'session_token' => $otpData['session_token'],
-            'expires_in'    => config('security.otp.expires_minutes') . ' menit',
+            'message'        => $mfaData['message'],
+            'requires_mfa'   => true,
+            'requires_otp'   => true, // Legacy support
+            'mfa_type'       => $user->mfa_type ?? 'email',
+            'session_token'  => $mfaData['session_token'],
+            'expires_in'     => config('security.otp.expires_minutes') . ' menit',
         ], Response::HTTP_ACCEPTED);
     }
 

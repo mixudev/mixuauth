@@ -24,10 +24,10 @@ Route::prefix('auth')->name('auth.')->group(function () {
         ->middleware(PreAuthRateLimitMiddleware::class)
         ->name('login');
 
-    // Verifikasi OTP (dipanggil setelah keputusan OTP dari AI)
-    Route::post('/otp/verify', [AuthController::class, 'verifyOtp'])
+    // Verifikasi MFA (dipanggil setelah keputusan MFA dari sistem)
+    Route::post('/mfa/verify', [AuthController::class, 'verifyMfa'])
         ->middleware(PreAuthRateLimitMiddleware::class)
-        ->name('otp.verify');
+        ->name('mfa.verify');
 
     // Password Reset API
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])

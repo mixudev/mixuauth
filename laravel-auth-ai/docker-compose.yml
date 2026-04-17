@@ -25,7 +25,8 @@ services:
     env_file:
       - .env
     volumes:
-      - app_storage:/var/www/html/storage
+      - .:/var/www/html:delegated
+      # - app_storage:/var/www/html/storage # Named volume diganti ke bind mount agar sinkron dengan host
     networks:
       - internal
       - proxy
@@ -43,6 +44,8 @@ services:
       - redis
     env_file:
       - .env
+    volumes:
+      - .:/var/www/html:delegated
     networks:
       - internal
 
@@ -58,6 +61,8 @@ services:
       - db
     env_file:
       - .env
+    volumes:
+      - .:/var/www/html:delegated
     networks:
       - internal
 

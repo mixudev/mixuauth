@@ -31,7 +31,17 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_login_ua',
         'last_login_device',
         'timezone',
+        'otp_preference',
+        'avatar',
+        'mfa_enabled',
+        'mfa_type',
+        'totp_secret',
+        'backup_codes',
     ];
+
+    public const OTP_ALWAYS   = 'always';
+    public const OTP_SYSTEM   = 'system';
+    public const OTP_DISABLED = 'disabled';
 
     /*
     |--------------------------------------------------------------------------
@@ -62,8 +72,19 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at' => 'datetime',
         'last_login_at'     => 'datetime',
         'is_active'         => 'boolean',
-        'password'          => 'hashed',  // Laravel 11: otomatis hash via bcrypt/argon
+        'password'          => 'hashed',
+        'mfa_enabled'       => 'boolean',
+        'backup_codes'      => 'encrypted:array',
     ];
+
+    public function getAvatarUrlAttribute(): string
+    {
+        if ($this->avatar && \Illuminate\Support\Facades\Storage::disk('public')->exists($this->avatar)) {
+            return \Illuminate\Support\Facades\Storage::url($this->avatar);
+        }
+
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
+    }
 
     protected static function booted()
     {
@@ -205,6 +226,35 @@ class User extends Authenticatable implements MustVerifyEmail
             'last_login_device'  => $device,
         ]);
     }
+
+    /**
+     * Periksa apakah MFA aktif untuk user ini.
+     */
+    public function hasMfaEnabled(): bool
+    {
+        return $this->mfa_enabled === true;
+    }
+
+    /**
+     * Periksa apakah menggunakan TOTP (Authenticator App).
+     */
+    /**
+     * Verifikasi dan hapus kode cadangan yang digunakan.
+     */
+    public function useBackupCode(string $code): bool
+    {
+        $codes = $this->backup_codes ?? [];
+        $index = array_search($code, $codes);
+
+        if ($index !== false) {
+            array_splice($codes, $index, 1);
+            $this->update(['backup_codes' => $codes]);
+            return true;
+        }
+
+        return false;
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

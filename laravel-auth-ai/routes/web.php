@@ -12,10 +12,10 @@ Route::get('/', fn() => redirect()->route('login'));
 Route::middleware('guest')->group(function () {
     Route::get('/login', [WebAuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [WebAuthController::class, 'login'])->name('login.post');
-    Route::get('/otp', [WebAuthController::class, 'showOtp'])->name('otp.verify');
-    Route::post('/otp', [WebAuthController::class, 'verifyOtp'])
+    Route::get('/auth/mfa/verify', [WebAuthController::class, 'showMfaVerify'])->name('auth.mfa.verify');
+    Route::post('/auth/mfa/verify', [WebAuthController::class, 'verifyMfa'])
         ->middleware('throttle:5,1')
-        ->name('otp.verify.post');
+        ->name('auth.mfa.verify.post');
 
     // Forgot Password
     Route::get('/forgot-password', [WebAuthController::class, 'showForgotPassword'])->name('password.request');

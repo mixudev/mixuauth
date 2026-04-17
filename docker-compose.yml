@@ -24,7 +24,7 @@ services:
     env_file:
       - ./laravel-auth-ai/.env
     volumes:
-      - app_storage:/var/www/html/storage
+      # - app_storage:/var/www/html/storage # Dihapus agar sinkron dengan host dan Nginx
       - ./laravel-auth-ai:/var/www/html
       - ./ai-security/.env:/var/www/ai-security/.env
       - vendor_data:/var/www/html/vendor

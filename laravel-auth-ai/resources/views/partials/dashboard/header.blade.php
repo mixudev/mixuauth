@@ -117,8 +117,8 @@
                     <button onclick="toggleDropdown()"
                         class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                         style="transition:background 150ms">
-                        <div class="w-7 h-7 rounded-full  flex  flex-shrink-0">
-                            <img src="https://i.pravatar.cc/300" alt="Avatar"
+                        <div class="w-7 h-7 rounded-full flex flex-shrink-0 shadow-sm border border-slate-200 dark:border-slate-700">
+                            <img src="{{ auth()->user()->avatar_url }}" alt="Avatar"
                                 class="w-full h-full rounded-full object-cover">
                         </div>
                         <span class="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -139,7 +139,7 @@
                                 {{ auth()->user()->email ?? '' }}
                             </div>
                         </div>
-                        <a href="#"
+                        <a href="{{ route('dashboard.profile.show') }}"
                             class="flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
                             style="transition:background 100ms"><svg class="w-4 h-4 text-slate-400" fill="none"
                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
