@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands\Ai;
 
-use App\Models\LoginLog;
+use App\Modules\Security\Models\LoginLog;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 

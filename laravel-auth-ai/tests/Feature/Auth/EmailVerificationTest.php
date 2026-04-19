@@ -5,7 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-use App\Notifications\VerifyEmailNotification;
+use App\Modules\Identity\Notifications\VerifyEmailNotification;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 

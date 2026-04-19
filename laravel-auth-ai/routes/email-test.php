@@ -22,9 +22,9 @@
  * ════════════════════════════════════════════════════════════════════
  */
 
-use App\Mail\ResetPasswordEmail;
-use App\Mail\VerifyEmail;
-use App\Mail\WelcomeEmail;
+use App\Mail\Auth\ResetPasswordEmail;
+use App\Mail\Identity\VerifyEmail;
+use App\Mail\Identity\WelcomeEmail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 

@@ -121,7 +121,7 @@
                     Security</p>
                 <ul class="space-y-0.5">
                     <li>
-                        <a href="" data-page="logs" class="sidebar-link " aria-label="Auth Logs">
+                        <a href="{{ route('admin.security.logs.index') }}" data-page="logs" class="sidebar-link {{ request()->routeIs('admin.security.logs.*') ? 'active' : '' }}" aria-label="Auth Logs">
                             <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
                                     class="w-4 h-4">
@@ -152,7 +152,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" data-page="otps" class="sidebar-link " aria-label="OTP Logs">
+                        <a href="{{ route('admin.security.otps.index') }}" data-page="otps" class="sidebar-link {{ request()->routeIs('admin.security.otps.*') ? 'active' : '' }}" aria-label="OTP Logs">
                             <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
                                 <i class="fa-solid fa-key" style="font-size: 15px;"></i>
                             </span>
@@ -161,7 +161,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" data-page="devices" class="sidebar-link " aria-label="Trusted Devices">
+                        <a href="{{ route('admin.security.devices.index') }}" data-page="devices" class="sidebar-link {{ request()->routeIs('admin.security.devices.*') ? 'active' : '' }}" aria-label="Trusted Devices">
                             <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
                                 <i class="fa-solid fa-desktop" style="font-size: 15px;"></i>
                             </span>
@@ -170,7 +170,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#" data-page="blacklist" class="sidebar-link " aria-label="IP Blacklist">
+                        <a href="{{ route('admin.security.blacklist.index') }}" data-page="blacklist" class="sidebar-link {{ request()->routeIs('admin.security.blacklist.*') ? 'active' : '' }}" aria-label="IP Blacklist">
                             <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
                                 <i class="fa-solid fa-ban" style="font-size: 15px;"></i>
                             </span>
@@ -179,7 +179,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="" data-page="whitelist" class="sidebar-link " aria-label="IP Whitelist">
+                        <a href="{{ route('admin.security.whitelist.index') }}" data-page="whitelist" class="sidebar-link {{ request()->routeIs('admin.security.whitelist.*') ? 'active' : '' }}" aria-label="IP Whitelist">
                             <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
                                 <i class="fa-solid fa-check-double" style="font-size: 15px;"></i>
                             </span>

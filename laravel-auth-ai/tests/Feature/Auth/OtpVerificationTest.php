@@ -3,9 +3,10 @@
 namespace Tests\Feature\Auth;
 
 use App\DTOs\RiskAssessmentResult;
-use App\Models\OtpVerification;
+use App\Modules\Authentication\Models\OtpVerification;
 use App\Models\User;
-use App\Services\Security\AiRiskClientService;
+use App\Modules\Security\Services\DeviceFingerprintService;
+use App\Modules\Security\Services\AiRiskClientService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -29,7 +30,7 @@ class OtpVerificationTest extends TestCase
 
         // Step 1: Login → AI mengembalikan OTP
         $this->mock(AiRiskClientService::class, function ($mock) {
-            $mock->shouldReceive('sendToFastApi')
+            $mock->shouldReceive('assess')
                  ->once()
                  ->andReturn(new RiskAssessmentResult(
                      riskScore: 45, decision: 'OTP',

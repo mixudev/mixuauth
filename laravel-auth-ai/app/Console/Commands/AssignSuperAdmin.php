@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Models\Role;
+use App\Modules\Authorization\Models\Role;
 use Illuminate\Console\Command;
 
 class AssignSuperAdmin extends Command

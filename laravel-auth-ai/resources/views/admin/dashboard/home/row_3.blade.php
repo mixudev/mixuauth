@@ -6,7 +6,7 @@
                 <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Log Login Terbaru</h2>
                 <p class="text-xs text-slate-400 mt-0.5">10 percobaan login terakhir</p>
             </div>
-            <a href="{{ route('security.logs') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua →</a>
+            <a href="{{ route('admin.security.logs.index') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua →</a>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-xs">
@@ -91,7 +91,7 @@
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-5">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Notifikasi</h2>
-                <a href="{{ route('security.notifications') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Semua</a>
+                <a href="{{ route('dashboard.notifications.all') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Semua</a>
             </div>
             <div class="space-y-2">
                 @forelse($recentNotifs ?? [] as $notif)

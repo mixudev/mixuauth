@@ -70,7 +70,7 @@ $colorMap = [
             @endif
         </div>
         <div>
-            <p class="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{{ number_format($card['value']) }}</p>
+            <p class="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">@shortnum($card['value'])</p>
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ $card['label'] }}</p>
             <p class="text-[10px] text-slate-400 dark:text-slate-600 mt-0.5">{{ $card['sub'] }}</p>
         </div>

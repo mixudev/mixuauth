@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Services;
 
-use App\Models\OtpVerification;
+use App\Modules\Authentication\Models\OtpVerification;
 use App\Models\User;
 use App\Services\Auth\OtpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;

@@ -57,7 +57,7 @@
         <p class="text-sm font-semibold text-red-800 dark:text-red-300">{{ $criticalAlerts->count() }} Notifikasi Keamanan Aktif</p>
         <p class="text-xs text-red-600 dark:text-red-400 mt-0.5 truncate">{{ $criticalAlerts->first()->message ?? 'Terdapat ancaman yang membutuhkan perhatian segera.' }}</p>
     </div>
-    <a href="{{ route('security.notifications') }}" class="flex-shrink-0 text-xs font-medium text-red-700 dark:text-red-400 hover:underline">Lihat semua →</a>
+    <a href="{{ route('dashboard.notifications.all') }}" class="flex-shrink-0 text-xs font-medium text-red-700 dark:text-red-400 hover:underline">Lihat semua →</a>
 </div>
 @endif
 

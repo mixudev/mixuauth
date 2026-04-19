@@ -84,7 +84,7 @@ class LoginRiskAssessmentTest extends TestCase
     {
         // Simulasikan AI tidak bisa dijangkau
         $this->mock(AiRiskClientService::class, function ($mock) {
-            $mock->shouldReceive('sendToFastApi')
+            $mock->shouldReceive('assess')
                  ->once()
                  ->andThrow(new \RuntimeException('Connection refused'));
         });
@@ -104,7 +104,7 @@ class LoginRiskAssessmentTest extends TestCase
     public function test_wrong_password_returns_401_without_ai_call(): void
     {
         $this->mock(AiRiskClientService::class, function ($mock) {
-            $mock->shouldReceive('sendToFastApi')->never();
+            $mock->shouldReceive('assess')->never();
         });
 
         $response = $this->postJson('/api/auth/login', [
@@ -149,7 +149,7 @@ class LoginRiskAssessmentTest extends TestCase
     private function mockAiService(string $decision, int $riskScore, array $flags = []): void
     {
         $this->mock(AiRiskClientService::class, function ($mock) use ($decision, $riskScore, $flags) {
-            $mock->shouldReceive('sendToFastApi')
+            $mock->shouldReceive('assess')
                  ->once()
                  ->andReturn(new RiskAssessmentResult(
                      riskScore:   $riskScore,

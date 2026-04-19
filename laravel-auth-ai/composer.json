@@ -30,8 +30,8 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Helpers/NumberHelper.php",
-            "app/Helpers/timezone_helpers.php"
+            "app/Helpers/FormattingHelper.php",
+            "app/Modules/Identity/helpers.php"
         ]
     },
     "autoload-dev": {

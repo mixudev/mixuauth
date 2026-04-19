@@ -129,6 +129,8 @@ log_success "Kredensial keamanan telah diperbarui."
 # ----------------------------------------------------------
 log_info "Membuat direktori..."
 mkdir -p docker/nginx
+mkdir -p docker/laravel
+mkdir -p docker/docs
 mkdir -p ai-security/app/models
 mkdir -p ai-security/logs
 
@@ -189,7 +191,8 @@ log_info "Menjalankan semua services..."
 docker compose up -d
 
 log_info "Menunggu semua services siap..."
-sleep 10
+sleep 15
+
 
 # ----------------------------------------------------------
 # Verifikasi
@@ -223,14 +226,17 @@ echo "=============================================="
 echo -e "${GREEN}  Setup selesai!${NC}"
 echo "=============================================="
 echo ""
+echo "  Laravel App  : http://localhost:8080"
 echo "  Laravel API  : http://localhost:8080/api"
 echo "  FastAPI      : http://localhost:8000/health"
-echo "  FastAPI Docs : http://localhost:8000/docs (dev only)"
+echo "  phpMyAdmin   : http://localhost:8081"
+echo "  Dokumentasi  : http://localhost:8090"
 echo ""
 echo "  Untuk melihat log:"
 echo "    docker compose logs -f app"
 echo "    docker compose logs -f fastapi-risk"
 echo "    docker compose logs -f worker"
+echo "    docker compose logs -f docs"
 echo ""
 echo "  Untuk menghentikan:"
 echo "    docker compose down"

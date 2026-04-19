@@ -350,7 +350,7 @@
             // ─── CLOCK UPDATE
             const clockEl = document.getElementById('header-clock');
             if (clockEl) {
-                const tz = '{{ app(\App\Services\TimezoneService::class)->getUserTimezone() }}';
+                const tz = '{{ app(\App\Modules\Timezone\Services\TimezoneService::class)->getUserTimezone() }}';
                 const formatter = new Intl.DateTimeFormat('en-GB', {
                     hour: '2-digit', minute: '2-digit', second: '2-digit',
                     hour12: false, timeZone: tz

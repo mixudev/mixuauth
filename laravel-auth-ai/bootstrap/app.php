@@ -1,7 +1,8 @@
 <?php
 
-use App\Http\Middleware\VerifySessionFingerprintMiddleware;
-use App\Http\Middleware\EnsureSessionVersionMiddleware;
+use App\Modules\Authentication\Middleware\VerifySessionFingerprintMiddleware;
+use App\Modules\Authentication\Middleware\EnsureSessionVersionMiddleware;
+use App\Modules\Authentication\Middleware\PreAuthRateLimitMiddleware;
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\CheckPermission;
 use Illuminate\Foundation\Application;
@@ -26,30 +27,28 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->redirectGuestsTo('/login');
+        $middleware->redirectUsersTo('/dashboard');
 
         // Middleware global untuk semua request API
-        // Catatan security: API idealnya stateless. Hindari set cookie identitas perangkat di group API
-        // kecuali Anda memang sengaja membuat API stateful (SPA + cookie auth).
         $middleware->api(append: [
             // Header keamanan dasar ditangani oleh reverse proxy (Nginx/Traefik)
-            // Middleware tambahan dapat ditambahkan di sini sesuai kebutuhan
         ]);
 
-        // Daftarkan alias middleware untuk kemudahan penggunaan di routes
+        // Daftarkan alias middleware — sekarang menggunakan namespace modul
         $middleware->alias([
-            'pre.auth.ratelimit' => \App\Http\Middleware\PreAuthRateLimitMiddleware::class,
-            'verify.fingerprint' => VerifySessionFingerprintMiddleware::class,
-            'ensure.session.version' => EnsureSessionVersionMiddleware::class,
-            'role' => CheckRole::class,
-            'permission' => CheckPermission::class,
+            'pre.auth.ratelimit'      => PreAuthRateLimitMiddleware::class,
+            'verify.fingerprint'      => VerifySessionFingerprintMiddleware::class,
+            'ensure.session.version'  => EnsureSessionVersionMiddleware::class,
+            'role'                    => CheckRole::class,
+            'permission'              => CheckPermission::class,
         ]);
 
-        // Kecualikan route auth dari CSRF (untuk API stateless)
-        // Deteksi timezone untuk semua request web
+        // Middleware web global
         $middleware->web(append: [
-            \App\Http\Middleware\DeviceIdentifierMiddleware::class,
-            \App\Http\Middleware\TimezoneMiddleware::class,
-            \App\Http\Middleware\SecurityHeadersMiddleware::class, // [M-05 FIX]
+            \App\Modules\Security\Middleware\DeviceIdentifierMiddleware::class,
+            \App\Modules\Timezone\Middleware\TimezoneMiddleware::class,
+            \App\Modules\Security\Middleware\SecurityHeadersMiddleware::class, // [M-05 FIX]
         ]);
 
         $trustedProxies = array_values(array_filter(array_map(
@@ -69,10 +68,18 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
     })
-    
-    ->withProviders([
-        App\Providers\DashboardServiceProvider::class,
-        App\Providers\TimezoneServiceProvider::class,
 
+    ->withProviders([
+        // ── Authentication Module ─────────────────────────────────────────────
+        App\Modules\Authentication\AuthServiceProvider::class,
+
+        // ── Feature Providers ─────────────────────────────────────────────────
+        App\Modules\Security\SecurityServiceProvider::class,
+        App\Modules\Identity\IdentityServiceProvider::class,
+        App\Modules\Dashboard\DashboardServiceProvider::class,
+        App\Modules\Authorization\AuthorizationServiceProvider::class,
+        App\Modules\Timezone\TimezoneServiceProvider::class,
+        App\Modules\Common\CommonServiceProvider::class,
+        App\Modules\Communication\CommunicationServiceProvider::class,
     ])
     ->create();

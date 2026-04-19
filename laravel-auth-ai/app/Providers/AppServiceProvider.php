@@ -2,22 +2,13 @@
 
 namespace App\Providers;
 
-use App\Services\Auth\BlockingService;
-use App\Services\Auth\LoginRiskService;
-use App\Services\Auth\LoginAuditService;
-use App\Services\Auth\OtpService;
-use App\Services\Security\DeviceFingerprintService;
-use App\Services\Security\AiRiskClientService;
-use App\Services\Security\RiskFallbackService;
-use App\Services\Stats\StatsService;
-use App\Services\User\UserService;
-use App\Repositories\TrustedDeviceRepository;
-use App\Models\SecurityNotification;
-use App\Models\TrustedDevice;
+// StatsService moved to DashboardServiceProvider
+use App\Modules\Identity\Services\UserService;
 use App\Models\User;
-use App\Policies\SecurityNotificationPolicy;
-use App\Policies\TrustedDevicePolicy;
-use App\Policies\UserPolicy;
+use App\Modules\Security\Models\SecurityNotification;
+use App\Modules\Security\Models\TrustedDevice;
+// TrustedDevicePolicy and SecurityNotificationPolicy moved to Security module
+use App\Modules\Identity\Policies\UserPolicy;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\View;
@@ -31,40 +22,23 @@ class AppServiceProvider extends ServiceProvider
 {
     /*
     |--------------------------------------------------------------------------
-    | Registrasi binding service container.
+    | Application — Global Service Provider
     |
-    | Semua service didaftarkan sebagai singleton untuk menghindari
-    | pembuatan instance berulang dalam satu siklus request.
+    | Binding yang bersifat lintas-modul (cross-module) dan konfigurasi
+    | shared yang tidak dimiliki oleh satu modul tertentu.
+    |
+    | CATATAN: Binding services Auth, Security, dan Device telah dipindahkan
+    | ke App\Modules\Authentication\AuthServiceProvider (Fase 1).
     |--------------------------------------------------------------------------
     */
 
     public function register(): void
     {
-        // Singleton: satu instance per request lifecycle
-        $this->app->singleton(DeviceFingerprintService::class);
-        $this->app->singleton(AiRiskClientService::class);
-        $this->app->singleton(RiskFallbackService::class);
-        $this->app->singleton(OtpService::class);
-        $this->app->singleton(BlockingService::class);
-
-        // Service dengan dependency injection otomatis via container
-        $this->app->singleton(LoginRiskService::class, function ($app) {
-            return new LoginRiskService(
-                $app->make(DeviceFingerprintService::class)
-            );
-        });
-
-        $this->app->singleton(LoginAuditService::class, function ($app) {
-            return new LoginAuditService(
-                $app->make(DeviceFingerprintService::class)
-            );
-        });
-
-        $this->app->singleton(TrustedDeviceRepository::class, function ($app) {
-            return new TrustedDeviceRepository(
-                $app->make(DeviceFingerprintService::class)
-            );
-        });
+        // ── Shared / Cross-Module Services ────────────────────────────────────
+        // Services ini digunakan oleh lebih dari satu modul, sehingga
+        // didaftarkan secara global di sini.
+        // StatsService dipindahkan ke DashboardServiceProvider
+        $this->app->singleton(UserService::class);
     }
 
     public function boot(): void
@@ -74,36 +48,17 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
-        // RBAC glue:
-        // - super-admin bypasses everything
-        // - if an ability looks like a permission slug (e.g. "users.edit"), map it to RBAC permissions
-        Gate::before(static function (User $user, string $ability) {
-            if ($user->hasRole('super-admin')) {
-                return true;
-            }
-
-            if (str_contains($ability, '.')) {
-                return $user->hasPermission($ability) ? true : null;
-            }
-
-            return null;
-        });
-
-        // Backward-compatible gates used across requests/controllers
-        Gate::define('access-admin-panel', static fn (User $user): bool => $user->can('dashboard.view'));
-        Gate::define('access-admin-security', static fn (User $user): bool => $user->can('settings.security') || $user->can('errors.view'));
+        // ── RBAC Gate ─────────────────────────────────────────────────────────
+        // Gate rules and Role/Permission policies have been moved to App\Modules\Authorization\AuthorizationServiceProvider
 
         Gate::policy(User::class, UserPolicy::class);
-        Gate::policy(SecurityNotification::class, SecurityNotificationPolicy::class);
-        Gate::policy(TrustedDevice::class, TrustedDevicePolicy::class);
 
+        // ── Rate Limiters ─────────────────────────────────────────────────────
         RateLimiter::for('mfa', static function ($request) {
-            // Prefer session_token-based limiting so API + web are both protected.
-            // Fallback to session email (web) or IP-only (last resort).
             $sessionToken = (string) $request->input('session_token', session('mfa_session_token', ''));
-            $tokenKey = $sessionToken !== '' ? hash('sha256', $sessionToken) : '';
+            $tokenKey     = $sessionToken !== '' ? hash('sha256', $sessionToken) : '';
 
-            $email = strtolower((string) $request->input('email', session('mfa_email', '')));
+            $email    = strtolower((string) $request->input('email', session('mfa_email', '')));
             $emailKey = $email !== '' ? hash('sha256', $email) : '';
 
             $key = $tokenKey !== ''
@@ -125,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by($userId !== '' ? $userId : $request->ip());
         });
 
+        // ── View Composer ─────────────────────────────────────────────────────
         View::composer('layouts.app', function ($view) {
             $aiOnline = Cache::remember('ai_status', 15, function () {
                 try {
@@ -136,7 +92,5 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('aiOnline', $aiOnline);
         });
-
-        
     }
 }

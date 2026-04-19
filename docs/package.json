@@ -1,0 +1,13 @@
+{
+  "name": "ai-auth-docs",
+  "version": "1.0.0",
+  "description": "Dokumentasi AI Authentication System",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.3"
+  }
+}

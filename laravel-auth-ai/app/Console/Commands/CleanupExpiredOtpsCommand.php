@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\OtpVerification;
+use App\Modules\Authentication\Models\OtpVerification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 

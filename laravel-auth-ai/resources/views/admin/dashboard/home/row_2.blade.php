@@ -22,7 +22,7 @@
                 <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Top Threat IPs</h2>
                 <p class="text-xs text-slate-400 mt-0.5">IP dengan aktivitas blocked terbanyak</p>
             </div>
-            <a href="{{ route('security.blacklist') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua</a>
+            <a href="{{ route('admin.security.blacklist.index') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua</a>
         </div>
         <div class="space-y-2">
             @forelse($topThreatIps ?? [] as $i => $ip)

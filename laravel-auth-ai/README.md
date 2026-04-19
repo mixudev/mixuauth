@@ -17,7 +17,7 @@ Client
   ├─ AuthController::login()
   │     ├─ Validasi kredensial (email + Argon2id password)
   │     ├─ LoginRiskService::prepareRiskPayload()  ←── kumpulkan sinyal risiko
-  │     ├─ AiRiskClientService::sendToFastApi()    ←── kirim ke FastAPI
+  │     ├─ AiRiskClientService::assess()           ←── kirim ke FastAPI
   │     │         └─ [timeout/error] → RiskFallbackService::assess()
   │     └─ Eksekusi keputusan:
   │           ├─ ALLOW  → finalizeLogin() → sesi + trusted device

@@ -11,6 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Modules\Authorization\Models\Role;
+use App\Modules\Authorization\Models\Permission;
+use App\Modules\Security\Models\LoginLog;
+use App\Modules\Security\Models\TrustedDevice;
+use App\Modules\Identity\Models\UserBlock;
+use App\Modules\Authentication\Models\OtpVerification;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -117,7 +123,7 @@ class User extends Authenticatable implements MustVerifyEmail
         static::updated(function ($user) {
             // Monitor Password Change
             if ($user->wasChanged('password')) {
-                \App\Models\SecurityNotification::create([
+                \App\Modules\Security\Models\SecurityNotification::create([
                     'user_id'    => $user->id,
                     'type'       => 'warning',
                     'event'      => 'account.password_changed',
@@ -131,7 +137,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
             // Monitor Email Change
             if ($user->wasChanged('email')) {
-                \App\Models\SecurityNotification::create([
+                \App\Modules\Security\Models\SecurityNotification::create([
                     'user_id'    => $user->id,
                     'type'       => 'warning',
                     'event'      => 'account.email_changed',
@@ -148,7 +154,7 @@ class User extends Authenticatable implements MustVerifyEmail
         });
 
         static::deleted(function ($user) {
-            \App\Models\SecurityNotification::create([
+            \App\Modules\Security\Models\SecurityNotification::create([
                 'user_id'    => $user->id,
                 'type'       => 'error',
                 'event'      => 'account.deleted',
@@ -186,7 +192,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function otpVerifications(): HasMany
     {
-        return $this->hasMany(OtpVerification::class);
+        return $this->hasMany(\App\Modules\Authentication\Models\OtpVerification::class);
     }
 
     public function userBlocks(): HasMany
