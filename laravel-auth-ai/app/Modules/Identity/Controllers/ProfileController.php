@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use App\Mail\BackupCodesMail;
+use Illuminate\Support\Facades\Mail;
 
 class ProfileController extends Controller
 {
@@ -218,7 +220,7 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Sesi setup habis. Silakan coba lagi.'], 422);
         }
 
-        if (! \PragmaRX\Google2FALaravel\Facade::verifyKey($secret, $request->code)) {
+        if (! \PragmaRX\Google2FALaravel\Facade::verifyKey($secret, $request->code, 0)) {
             return response()->json(['message' => 'Kode yang Anda masukkan salah.'], 422);
         }
 
@@ -235,10 +237,17 @@ class ProfileController extends Controller
             'backup_codes' => $backupCodes,
         ]);
 
+        // Kirim kode cadangan ke email user
+        try {
+            Mail::to($user->email)->send(new BackupCodesMail($user->name, $backupCodes));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Gagal mengirim email kode cadangan MFA: ' . $e->getMessage());
+        }
+
         session()->forget('mfa_setup_secret');
 
         return response()->json([
-            'message'      => 'Authenticator App berhasil dikonfigurasi!',
+            'message'      => 'Authenticator App berhasil dikonfigurasi! Kode cadangan telah dikirim ke email Anda.',
             'backup_codes' => $backupCodes,
         ]);
     }

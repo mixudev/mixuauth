@@ -1,6 +1,6 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
 
-    <div class="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl overflow-hidden">
+    <div class="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm overflow-hidden">
         <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
             <div>
                 <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Log Login Terbaru</h2>
@@ -61,7 +61,7 @@
 
     <div class="space-y-4">
 
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-5">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-5">
             <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-4">Status OTP</h2>
             <div class="space-y-2.5">
                 @foreach([['label'=>'Aktif & Belum Verified','val'=>$otpSummary['active']??0,'dot'=>'bg-amber-400'],['label'=>'Sudah Diverifikasi','val'=>$otpSummary['verified']??0,'dot'=>'bg-emerald-500'],['label'=>'Kedaluwarsa','val'=>$otpSummary['expired']??0,'dot'=>'bg-slate-300 dark:bg-slate-600']] as $o)
@@ -76,7 +76,7 @@
             </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-5">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-5">
             <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-4">Perangkat Terpercaya</h2>
             <div class="grid grid-cols-3 gap-3 text-center">
                 @foreach([['label'=>'Aktif','val'=>$deviceSummary['total']??0,'color'=>'text-emerald-600 dark:text-emerald-400'],['label'=>'Expired','val'=>$deviceSummary['expired']??0,'color'=>'text-amber-600 dark:text-amber-400'],['label'=>'Revoked','val'=>$deviceSummary['revoked']??0,'color'=>'text-red-600 dark:text-red-400']] as $d)
@@ -88,7 +88,7 @@
             </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-5">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-5">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Notifikasi</h2>
                 <a href="{{ route('dashboard.notifications.all') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Semua</a>

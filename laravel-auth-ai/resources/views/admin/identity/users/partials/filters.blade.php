@@ -1,4 +1,4 @@
-<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4 mb-4">
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-4 mb-4">
     <form method="GET" action="{{ route('dashboard.users.index') }}" id="filterForm">
         <div class="flex flex-wrap items-center gap-3">
 

@@ -19,7 +19,7 @@ $colorMap = [
     @foreach($statCards as $card)
     @php $c = $colorMap[$card['color']]; @endphp
 
-    <div class="group relative flex flex-col justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 overflow-hidden">
+    <div class="group relative flex flex-col justify-between rounded-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 overflow-hidden">
 
         {{-- Icon --}}
         <div class="relative w-8 h-8 rounded-lg {{ $c['bg'] }} ring-1 {{ $c['ring'] }} flex items-center justify-center mb-3">

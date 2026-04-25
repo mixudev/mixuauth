@@ -1,157 +1,92 @@
-@extends('layouts.app')
+@extends('layouts.auth')
 
 @section('title', 'Verifikasi OTP')
+@section('auth_title', 'Verifikasi Identitas')
+@section('auth_subtitle', 'Kode 6 digit telah dikirimkan ke ' . (session('otp_email') ?? 'email Anda') . '.')
+@section('show_ai_banner', true)
 
-@push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-@endpush
+@section('auth_content')
 
-@section('content')
+    {{-- ── Error ── --}}
+    @error('otp_code')
+        <div class="alert alert-error">
+            {{ $message }}
+        </div>
+    @enderror
 
-<div class="min-h-screen bg-blue-50 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+    {{-- ── Form ── --}}
+    <form method="POST" action="{{ route('otp.verify.post') }}" id="otpForm">
+        @csrf
+        <input type="hidden" name="otp_code" id="otpHidden">
 
-    {{-- Ambient blobs --}}
-    <div class="absolute -top-32 -right-32 w-96 h-96 bg-blue-200 rounded-full opacity-40 blur-3xl pointer-events-none"></div>
-    <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-purple-200 rounded-full opacity-30 blur-3xl pointer-events-none"></div>
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-100 rounded-full opacity-50 blur-3xl pointer-events-none"></div>
+        <p style="font-family: 'Syne', sans-serif; font-size: 10px; uppercase; letter-spacing: 0.15em; color: #9CA3AF; text-align: center; margin-bottom: 16px;">
+            MASUKKAN KODE OTP
+        </p>
 
-    {{-- Dot grid --}}
-    <div class="absolute inset-0 pointer-events-none opacity-40"
-         style="background-image: radial-gradient(circle, #92400e20 1px, transparent 1px); background-size: 28px 28px;">
-    </div>
-
-    {{-- Card wrapper --}}
-    <div class="relative w-full max-w-md">
-
-        {{-- Top accent line --}}
-        <div class="absolute -top-px left-16 right-16 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent z-10"></div>
-
-        {{-- Card --}}
-        <div class="bg-white/80 backdrop-blur-xl border border-blue-100 rounded-3xl shadow-2xl shadow-blue-100/70 px-10 py-12">
-
-            {{-- ── Header ── --}}
-            <div class="flex flex-col items-center text-center mb-10">
-
-                {{-- Lock icon --}}
-                <div class="relative w-20 h-20 mb-6 flex items-center justify-center">
-                    <div class="absolute inset-0 rounded-full border border-blue-300 opacity-30 animate-ping"></div>
-                    <div class="absolute inset-2 rounded-full border border-blue-200 opacity-60 animate-pulse"></div>
-                    <div class="relative w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-400 rounded-2xl shadow-lg shadow-blue-300/50 flex items-center justify-center rotate-3 transition-transform duration-300 hover:rotate-0">
-                        <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-                        </svg>
-                    </div>
-                </div>
-
-                <h1 class="font-['Lora'] text-3xl font-semibold text-stone-800 tracking-tight leading-tight">
-                    Verifikasi <em class="text-blue-500 not-italic italic">Identitas</em>
-                </h1>
-
-                <p class="mt-3 text-sm text-stone-400 leading-relaxed">
-                    Kode 6 digit telah dikirimkan ke
-                </p>
-
-                <span class="mt-2 inline-flex items-center gap-1.5 font-['JetBrains_Mono'] text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-3 py-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                    {{ session('otp_email', 'email@kamu.com') }}
-                </span>
-            </div>
-
-            {{-- ── Error ── --}}
-            @error('otp_code')
-                <div class="flex items-center gap-2.5 bg-red-50 border border-red-100 text-red-500 rounded-xl px-4 py-3 mb-6 font-['JetBrains_Mono'] text-xs">
-                    <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-                    </svg>
-                    {{ $message }}
-                </div>
-            @enderror
-
-            {{-- ── Form ── --}}
-            <form method="POST" action="{{ route('otp.verify.post') }}" id="otpForm">
-                @csrf
-                <input type="hidden" name="otp_code" id="otpHidden">
-
-                <p class="font-['JetBrains_Mono'] text-[10px] uppercase tracking-[0.2em] text-stone-400 text-center mb-4">
-                    Masukkan kode OTP
-                </p>
-
-                {{-- Digit boxes --}}
-                <div class="flex items-center justify-center gap-2 mb-3">
-                    @for($i = 0; $i < 3; $i++)
-                        <input
-                            type="text"
-                            class="otp-digit w-12 h-14 bg-stone-50 border border-stone-200 rounded-xl text-center font-['JetBrains_Mono'] text-xl font-semibold text-stone-700 outline-none transition-all duration-200 focus:border-blue-400 focus:bg-blue-50/60 focus:shadow-[0_0_0_3px_rgba(251,191,36,0.15)] focus:-translate-y-0.5"
-                            maxlength="1"
-                            inputmode="numeric"
-                            data-index="{{ $i }}"
-                            autocomplete="{{ $i === 0 ? 'one-time-code' : 'off' }}"
-                            aria-label="Digit {{ $i + 1 }}"
-                        >
-                    @endfor
-
-                    <span class="text-stone-300 text-2xl font-light select-none pb-1">·</span>
-
-                    @for($i = 3; $i < 6; $i++)
-                        <input
-                            type="text"
-                            class="otp-digit w-12 h-14 bg-stone-50 border border-stone-200 rounded-xl text-center font-['JetBrains_Mono'] text-xl font-semibold text-stone-700 outline-none transition-all duration-200 focus:border-blue-400 focus:bg-blue-50/60 focus:shadow-[0_0_0_3px_rgba(251,191,36,0.15)] focus:-translate-y-0.5"
-                            maxlength="1"
-                            inputmode="numeric"
-                            data-index="{{ $i }}"
-                            autocomplete="off"
-                            aria-label="Digit {{ $i + 1 }}"
-                        >
-                    @endfor
-                </div>
-
-                {{-- Progress bar --}}
-                <div class="h-0.5 bg-stone-100 rounded-full mx-2 mb-7 overflow-hidden">
-                    <div id="progressBar" class="h-full bg-gradient-to-r from-blue-400 to-purple-300 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
-                </div>
-
-                {{-- Submit button --}}
-                <button
-                    type="submit"
-                    id="submitBtn"
-                    disabled
-                    class="w-full flex items-center justify-center gap-2.5 bg-gradient-to-br from-blue-400 to-purple-400 hover:from-blue-300 hover:to-purple-300 disabled:from-stone-200 disabled:to-stone-200 disabled:text-stone-400 text-white font-semibold text-sm rounded-xl py-3.5 transition-all duration-200 shadow-lg shadow-blue-200/60 disabled:shadow-none hover:shadow-blue-300/60 hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed"
+        {{-- Digit boxes --}}
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 24px;">
+            @for($i = 0; $i < 3; $i++)
+                <input
+                    type="text"
+                    class="otp-digit form-input"
+                    style="width: 48px; height: 56px; text-align: center; font-size: 20px; font-weight: 700;"
+                    maxlength="1"
+                    inputmode="numeric"
+                    data-index="{{ $i }}"
+                    autocomplete="{{ $i === 0 ? 'one-time-code' : 'off' }}"
+                    aria-label="Digit {{ $i + 1 }}"
                 >
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 12c0 6.627 5.373 12 12 12s12-5.373 12-12c0-2.127-.557-4.124-1.534-5.857"/>
-                    </svg>
-                    Verifikasi Sekarang
-                </button>
-            </form>
+            @endfor
 
-            {{-- ── Footer ── --}}
-            <div class="mt-7 flex flex-col items-center gap-4">
+            <span style="color: #E5E7EB; font-size: 20px; font-weight: 300;">—</span>
 
-                <div class="flex items-center gap-2 font-['JetBrains_Mono'] text-xs text-stone-400">
-                    <span id="timerDot" class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse flex-shrink-0"></span>
-                    <span>Berlaku selama</span>
-                    <span id="timerDisplay" class="text-blue-500 font-medium">
-                        {{ session('otp_expires_in', '05:00') }}
-                    </span>
-                </div>
-
-                <div class="w-full h-px bg-stone-100"></div>
-
-                <a href="{{ route('login') }}" class="group inline-flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-600 font-['JetBrains_Mono'] transition-colors duration-200">
-                    <svg class="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
-                    </svg>
-                    Kembali ke halaman login
-                </a>
-
-            </div>
+            @for($i = 3; $i < 6; $i++)
+                <input
+                    type="text"
+                    class="otp-digit form-input"
+                    style="width: 48px; height: 56px; text-align: center; font-size: 20px; font-weight: 700;"
+                    maxlength="1"
+                    inputmode="numeric"
+                    data-index="{{ $i }}"
+                    autocomplete="off"
+                    aria-label="Digit {{ $i + 1 }}"
+                >
+            @endfor
         </div>
 
-        {{-- Depth shadow layer --}}
-        <div class="absolute -bottom-3 left-8 right-8 h-8 bg-blue-200/50 rounded-3xl blur-lg -z-10"></div>
-    </div>
-</div>
+        {{-- Submit button --}}
+        <div class="btn-submit-wrap">
+            <button
+                type="submit"
+                id="submitBtn"
+                disabled
+                class="btn-submit"
+            >
+                Verifikasi Sekarang
+            </button>
+        </div>
+    </form>
 
+    {{-- ── Footer ── --}}
+    <div style="margin-top: 24px; display: flex; flex-direction: column; align-items: center; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9CA3AF;">
+            <div id="timerDot" class="pulse-dot"></div>
+            <span>Berlaku selama</span>
+            <span id="timerDisplay" style="color: #F5A623; font-weight: 700;">
+                {{ session('otp_expires_in', '05:00') }}
+            </span>
+        </div>
+    </div>
+
+@endsection
+
+@section('auth_footer_extra')
+    <a href="{{ route('login') }}" style="font-size: 12px; color: #9CA3AF; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/>
+        </svg>
+        Kembali ke halaman login
+    </a>
 @endsection
 
 @push('scripts')
@@ -160,24 +95,11 @@
     const digits    = document.querySelectorAll('.otp-digit');
     const hidden    = document.getElementById('otpHidden');
     const submitBtn = document.getElementById('submitBtn');
-    const progress  = document.getElementById('progressBar');
-
-    function setFilled(el, filled) {
-        if (filled) {
-            el.classList.add('border-blue-300', 'bg-blue-50', 'text-blue-600');
-            el.classList.remove('border-stone-200', 'bg-stone-50', 'text-stone-700');
-        } else {
-            el.classList.remove('border-blue-300', 'bg-blue-50', 'text-blue-600');
-            el.classList.add('border-stone-200', 'bg-stone-50', 'text-stone-700');
-        }
-    }
 
     function updateState() {
         const val    = Array.from(digits).map(d => d.value).join('');
         hidden.value = val;
-        progress.style.width    = (val.length / 6 * 100) + '%';
-        submitBtn.disabled      = val.length < 6;
-        digits.forEach(d => setFilled(d, !!d.value));
+        submitBtn.disabled = val.length < 6;
     }
 
     digits.forEach((input, i) => {
@@ -185,8 +107,6 @@
             const clean = e.target.value.replace(/\D/g, '');
             e.target.value = clean.slice(-1);
             if (clean) {
-                input.style.transform = 'scale(1.14) translateY(-3px)';
-                setTimeout(() => { input.style.transform = ''; }, 170);
                 if (i < 5) digits[i + 1].focus();
             }
             updateState();
@@ -231,8 +151,8 @@
         if (seconds <= 0) {
             clearInterval(tick);
             timerEl.textContent = 'Kedaluwarsa';
-            timerEl.classList.replace('text-blue-500', 'text-red-400');
-            timerDot.classList.replace('bg-blue-400', 'bg-red-400');
+            timerEl.style.color = '#ef4444';
+            timerDot.style.background = '#ef4444';
             return;
         }
         const m = String(Math.floor(seconds / 60)).padStart(2, '0');

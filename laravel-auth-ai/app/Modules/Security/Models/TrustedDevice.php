@@ -51,11 +51,12 @@ class TrustedDevice extends Model
      */
     public function scopeActive($query)
     {
-        // Gunakan format string waktu yang eksplisit (UTC) untuk menghindari
-        // masalah presisi atau timezone mismatch di tingkat database.
         return $query
             ->where('is_revoked', false)
-            ->where('trusted_until', '>', now()->utc()->toDateTimeString());
+            ->where(function($q) {
+                $q->whereNull('trusted_until')
+                  ->orWhere('trusted_until', '>', now());
+            });
     }
 
     /**

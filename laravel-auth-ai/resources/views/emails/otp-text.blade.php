@@ -1,4 +1,4 @@
-<x-email-base-text heading="Kode Verifikasi Login">
+<x-email.base-text heading="Kode Verifikasi Login">
 
 Halo {{ $userName }},
 
@@ -15,4 +15,4 @@ Percobaan login dari IP: {{ $ipAddress }}
 
 Jika Anda tidak sedang melakukan login, abaikan email ini dan pertimbangkan untuk mengganti password Anda.
 
-</x-email-base-text>
+</x-email.base-text>

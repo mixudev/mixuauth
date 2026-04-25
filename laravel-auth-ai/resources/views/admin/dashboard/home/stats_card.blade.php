@@ -58,7 +58,7 @@ $colorMap = [
 <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
     @foreach($cards as $card)
     @php $c = $colorMap[$card['color']]; @endphp
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4 flex flex-col gap-3 hover:shadow-md dark:hover:shadow-black/20 transition-shadow">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-4 flex flex-col gap-3 hover:shadow-md dark:hover:shadow-black/20 transition-shadow">
         <div class="flex items-center justify-between">
             <div class="w-9 h-9 rounded-lg {{ $c['bg'] }} ring-1 {{ $c['ring'] }} flex items-center justify-center">
                 <svg style="width:18px;height:18px" class="{{ $c['ic'] }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">{!! $card['icon'] !!}</svg>

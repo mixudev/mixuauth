@@ -7,7 +7,7 @@ return array (
     'fonnte' => 
     array (
       'base_url' => 'https://api.fonnte.com/send',
-      'token' => 'sTVodj3b8qkdzEmkWakE',
+      'token' => env('WA_FONNTE_TOKEN', ''),
       'token_header' => 'Authorization',
       'token_prefix' => '',
       'as_form' => true,

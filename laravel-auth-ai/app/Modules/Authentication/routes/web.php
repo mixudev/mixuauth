@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Authentication\Controllers\WebAuthController;
+use App\Modules\Authentication\Controllers\SocialAuthController;
 use App\Modules\Authentication\Middleware\PreAuthRateLimitMiddleware;
 use App\Modules\Authentication\Middleware\EnsureSessionVersionMiddleware;
 use App\Modules\Authentication\Middleware\VerifySessionFingerprintMiddleware;
@@ -36,9 +37,17 @@ Route::middleware('guest')->group(function () {
     Route::post('/reset-password', [WebAuthController::class, 'resetPassword'])
         ->middleware(PreAuthRateLimitMiddleware::class)
         ->name('password.update');
-});
 
+    // Social Login - Google
+    Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('auth.google');
+    Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+    Route::get('/auth/magic-login', [SocialAuthController::class, 'magicLogin'])->name('auth.magic_login');
+});
+ 
 Route::middleware([EnsureSessionVersionMiddleware::class, VerifySessionFingerprintMiddleware::class])->group(function () {
+    Route::get('/re-login', [WebAuthController::class, 'logout'])
+        ->middleware('auth')
+        ->name('re-login');
     Route::post('/logout', [WebAuthController::class, 'logout'])
         ->middleware('auth')
         ->name('logout');

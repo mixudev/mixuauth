@@ -1,4 +1,4 @@
-<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl overflow-hidden">
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-xs min-w-[760px]">
             <thead>
@@ -11,7 +11,7 @@
                     <th class="text-left px-3 py-3 font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider text-[10px] hidden md:table-cell">Email</th>
                     <th class="text-left px-3 py-3 font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider text-[10px] hidden lg:table-cell">IP Terakhir</th>
                     <th class="text-left px-3 py-3 font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider text-[10px]">Status</th>
-                    <th class="text-left px-3 py-3 font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider text-[10px] hidden xl:table-cell">Login Terakhir</th>
+                    
                     <th class="text-left px-3 py-3 font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider text-[10px] hidden lg:table-cell">Blokir</th>
                     <th class="text-right px-4 py-3 font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider text-[10px]">Aksi</th>
                 </tr>
@@ -100,14 +100,7 @@
                         @endif
                     </td>
 
-                    {{-- Login terakhir --}}
-                    <td class="px-3 py-3 hidden xl:table-cell">
-                        <span class="font-mono text-slate-400 dark:text-slate-600 text-[10px]">
-                            @if($user->last_login_at) @localtime($user->last_login_at) @else — @endif
 
-
-                        </span>
-                    </td>
 
                     {{-- Block count --}}
                     <td class="px-3 py-3 hidden lg:table-cell">

@@ -23,12 +23,14 @@ class NotificationController extends Controller
     {
         $query = $this->scopedQuery($request)->whereNull('read_at');
         
-        $notifications = $query->latest()
+        $notifications = (clone $query)
+            ->select(['id', 'title', 'message', 'type', 'read_at', 'created_at'])
+            ->latest()
             ->limit(10)
             ->get();
 
         return response()->json([
-            'count' => $query->count(),
+            'count' => (clone $query)->count(),
             'data'  => $notifications,
         ]);
     }
@@ -42,14 +44,13 @@ class NotificationController extends Controller
     /**
      * Display the paginated notification list with filters and stats.
      */
-    public function all(Request $request): View
+    public function all(Request $request)
     {
         $query = $this->scopedQuery($request)->latest();
 
         // Filter: notification type
         if ($request->filled('type')) {
-            $data = $request->validate(['type' => 'in:info,warning,error,success']);
-            $query->where('type', $data['type']);
+            $query->where('type', $request->type);
         }
 
         // Filter: read status
@@ -61,7 +62,7 @@ class NotificationController extends Controller
             };
         }
 
-        // Filter: full-text search across title, message, ip_address, event
+        // Filter: search
         if ($request->filled('search')) {
             $term = $request->search;
             $query->where(function ($q) use ($term) {
@@ -74,12 +75,20 @@ class NotificationController extends Controller
 
         $notifications = $query->paginate(20)->withQueryString();
 
-        // Stats – cached counts for performance on large tables
+        // If AJAX request, return partials
+        if ($request->ajax() || $request->has('ajax')) {
+            return response()->json([
+                'html' => view('communication::notifications.partials.table_body', compact('notifications'))->render(),
+                'pagination' => $notifications->links()->render(),
+            ]);
+        }
+
+        // Stats
         $stats = [
-            'total'   => (clone $query)->count(),
-            'unread'  => (clone $query)->whereNull('read_at')->count(),
-            'warning' => (clone $query)->where('type', 'warning')->count(),
-            'error'   => (clone $query)->where('type', 'error')->count(),
+            'total'   => $this->scopedQuery($request)->count(),
+            'unread'  => $this->scopedQuery($request)->whereNull('read_at')->count(),
+            'warning' => $this->scopedQuery($request)->where('type', 'warning')->count(),
+            'error'   => $this->scopedQuery($request)->where('type', 'error')->count(),
         ];
 
         return view('communication::notifications.index', compact('notifications', 'stats'));
@@ -131,6 +140,32 @@ class NotificationController extends Controller
         $notification->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Bulk delete notifications by date range.
+     */
+    public function bulkDelete(Request $request): JsonResponse
+    {
+        $this->authorize('access-admin-security');
+
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $deleted = SecurityNotification::query()
+            ->when(
+                ! $request->user()->can('access-admin-security'),
+                fn ($query) => $query->where('user_id', $request->user()->id)
+            )
+            ->whereBetween('created_at', [$request->start_date, $request->end_date])
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$deleted} notifikasi berhasil dihapus."
+        ]);
     }
 
     private function scopedQuery(Request $request)

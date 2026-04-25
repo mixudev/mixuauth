@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\WhatsAppController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,8 +16,10 @@ use Illuminate\Support\Facades\Route;
 // ── Authentication Module API Routes ────────────────────────────────────
 require app_path('Modules/Authentication/routes/api.php');
 
-// WhatsApp Gateway Routes
-use App\Http\Controllers\WhatsAppController;
-Route::post('/whatsapp/send', [WhatsAppController::class, 'send']);
+// WhatsApp Gateway Routes — dilindungi auth:sanctum + throttle + permission
+Route::middleware(['auth:sanctum', 'throttle:wa-send'])->group(function () {
+    Route::post('/whatsapp/send', [WhatsAppController::class, 'send'])
+        ->middleware('permission:wa-gateway.send');
+});
 
 

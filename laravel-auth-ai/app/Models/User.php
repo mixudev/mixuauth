@@ -60,6 +60,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'totp_secret',
         'backup_codes',
         'session_version',
+        'google_id',
+        'google_token',
+        'google_refresh_token',
     ];
 
     public const OTP_ALWAYS   = 'always';
@@ -81,6 +84,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'mfa_type',          // Informasi internal MFA
         'last_login_ip',     // PII — jangan ekspos di JSON
         'last_login_ua',     // PII — jangan ekspos di JSON
+        'google_token',
+        'google_refresh_token',
     ];
 
     /* 

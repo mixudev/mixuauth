@@ -1,6 +1,6 @@
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6 items-stretch">
 
-    <div class="xl:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-5 flex flex-col">
+    <div class="xl:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-5 flex flex-col">
         <div class="flex items-center justify-between mb-5 flex-shrink-0">
             <div>
                 <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Tren Risk Score</h2>
@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-5">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-5">
         <div class="flex items-center justify-between mb-4">
             <div>
                 <h2 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Top Threat IPs</h2>

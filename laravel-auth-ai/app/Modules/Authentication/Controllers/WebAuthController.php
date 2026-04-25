@@ -13,16 +13,34 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Log;
 
+use App\Modules\Authentication\Services\BlockingService;
+use App\Modules\Security\Services\DeviceFingerprintService;
+
 class WebAuthController extends Controller
 {
     public function __construct(
         private readonly TimezoneService $timezoneService,
         private readonly AuthFlowService $authFlowService,
+        private readonly BlockingService $blockingService,
+        private readonly DeviceFingerprintService $fingerprintService,
     ) {}
 
-    public function showLogin()
+    public function showLogin(Request $request)
     {
-        return view('auth.login');
+        $ip = $this->fingerprintService->getRealIp($request);
+        $fingerprint = $this->fingerprintService->generate($request);
+
+        $isIpBlocked = $this->blockingService->isIpBlocked($ip);
+        $isDeviceBlocked = $this->blockingService->isDeviceBlocked($fingerprint);
+
+        $banReason = null;
+        if ($isIpBlocked) $banReason = 'IP Anda telah dibatasi karena aktivitas mencurigakan.';
+        if ($isDeviceBlocked) $banReason = 'Perangkat Anda tidak diizinkan untuk mengakses sistem.';
+
+        return view('auth.login', [
+            'is_banned' => $isIpBlocked || $isDeviceBlocked,
+            'ban_reason' => $banReason
+        ]);
     }
 
     public function login(Request $request)
@@ -77,11 +95,15 @@ class WebAuthController extends Controller
             'code' => 'required|string',
         ]);
 
-        $result = $this->authFlowService->verifyMfa(
-            $request,
-            (string) session('mfa_session_token'),
-            (string) $request->input('code')
-        );
+        $isRecovery = $request->boolean('recovery_mode');
+        $sessionToken = (string) session('mfa_session_token');
+        $code = (string) $request->input('code');
+
+        if ($isRecovery) {
+            $result = $this->authFlowService->verifyRecoveryCode($request, $sessionToken, $code);
+        } else {
+            $result = $this->authFlowService->verifyMfa($request, $sessionToken, $code);
+        }
 
         if ($result['status'] === 'authenticated' && isset($result['user']['id'])) {
             $user = User::find($result['user']['id']);

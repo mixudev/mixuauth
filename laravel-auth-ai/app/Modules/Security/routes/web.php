@@ -29,11 +29,20 @@ Route::middleware([
         Route::get('/logs', [SecurityController::class, 'logs'])
             ->middleware('permission:login-logs.view')
             ->name('logs.index');
+        Route::get('/logs/{log}/details', [SecurityController::class, 'logDetails'])
+            ->middleware('permission:login-logs.view')
+            ->name('logs.details');
+        Route::post('/logs/bulk-delete', [SecurityController::class, 'bulkDeleteLogs'])
+            ->middleware('permission:login-logs.view')
+            ->name('logs.bulk-delete');
 
         // Devices
         Route::get('/devices', [SecurityController::class, 'devices'])
-            ->middleware('permission:devices.view')
+            ->middleware('permission:trusted-devices.view')
             ->name('devices.index');
+        Route::get('/devices/{device}/details', [SecurityController::class, 'deviceDetails'])
+            ->middleware('permission:trusted-devices.view')
+            ->name('devices.details');
         Route::post('/devices/{device}/revoke', [SecurityController::class, 'revokeDevice'])
             ->middleware('permission:devices.revoke')
             ->name('devices.revoke');

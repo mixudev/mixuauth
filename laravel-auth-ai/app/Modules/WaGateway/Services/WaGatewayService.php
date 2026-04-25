@@ -127,9 +127,7 @@ class WaGatewayService
     {
         $status = $responseData['status'] ?? false ? 'success' : 'failed';
         $responseId = $responseData['id'][0] ?? ($responseData['id'] ?? null);
-
-        // Fallback to first active gateway if no specific config is set
-        $configId = $this->config ? $this->config->id : WaGatewayConfig::where('is_active', true)->value('id');
+        $configId = $this->resolveLogConfigId();
 
         WaGatewayLog::create([
             'wa_gateway_config_id' => $configId,
@@ -152,8 +150,7 @@ class WaGatewayService
      */
     protected function logFailedMessage(string $target, string $message, string $errorMessage): void
     {
-        // Fallback to first active gateway if no specific config is set
-        $configId = $this->config ? $this->config->id : WaGatewayConfig::where('is_active', true)->value('id');
+        $configId = $this->resolveLogConfigId();
 
         WaGatewayLog::create([
             'wa_gateway_config_id' => $configId,
@@ -309,7 +306,7 @@ class WaGatewayService
 
         $dailyLimit = (int) ($guardrail['daily_limit_per_config'] ?? 0);
         if ($dailyLimit > 0) {
-            $configId = $this->config ? $this->config->id : null;
+            $configId = $this->resolveLogConfigId();
             $todayCount = WaGatewayLog::where('wa_gateway_config_id', $configId)
                 ->whereDate('created_at', now()->toDateString())
                 ->count();
@@ -321,7 +318,7 @@ class WaGatewayService
 
         $dupWindow = (int) ($guardrail['prevent_duplicate_within_seconds'] ?? 0);
         if ($dupWindow > 0) {
-            $configId = $this->config ? $this->config->id : null;
+            $configId = $this->resolveLogConfigId();
             $recentDuplicate = WaGatewayLog::where('wa_gateway_config_id', $configId)
                 ->where('target_number', $target)
                 ->where('message', $message)
@@ -355,5 +352,11 @@ class WaGatewayService
         }
 
         return $now->greaterThanOrEqualTo($startAt) || $now->lessThanOrEqualTo($endAt);
+    }
+
+    protected function resolveLogConfigId(): ?int
+    {
+        return $this->config?->id
+            ?? WaGatewayConfig::where('is_active', true)->value('id');
     }
 }

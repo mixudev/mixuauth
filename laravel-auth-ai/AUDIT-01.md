@@ -1,231 +1,95 @@
-**Audit keamanan & arsitektur (Laravel 11) – fokus AuthN/AuthZ**
+**1. Ringkasan Umum Kondisi Sistem**
 
-Cakupan yang saya review: alur login web/API, MFA/OTP, session & cookie binding, rate limiting, trusted device, RBAC, route middleware, logging/audit, reset password, email verification, konfigurasi environment & Docker, plus struktur modul.
+Status saat ini: **belum aman untuk production** dengan tingkat risiko **Critical/High**. Permasalahan utamanya ada di **broken access control**, **secret management**, **stored/DOM XSS**, dan **readiness deploy**.
 
-## Ringkasan Eksekutif
-Ada beberapa temuan **kritikal/high** yang perlu diprioritaskan:
-1. Secret hardcoded di codebase.
-2. CAPTCHA/risk control punya mode **fail-open**.
-3. Rute security admin belum dilindungi middleware session-hardening (`ensure.session.version`, `verify.fingerprint`).
-4. `isAdmin()` masih punya bypass berbasis email config.
-5. Implementasi TOTP saat setup berpotensi salah simpan secret.
-6. Fallback risk scoring punya bug normalisasi skor IP.
-7. Exposure infrastruktur (DB/Redis publish ke host).
+Baseline yang sudah cukup baik: `composer audit` pada lockfile **tidak menemukan advisory**, reset token password sudah di-hash di [PasswordResetService.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Authentication/Services/PasswordResetService.php:20>), cookie/session hardening sudah ada di [config/session.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/config/session.php:172>) dan [docker/php/php.ini](<D:/WEBSITE/DOCKER/AI-AUTH-02/docker/php/php.ini:20>), login/MFA sudah memakai rate limit di [Authentication routes](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Authentication/routes/web.php:21>), dan upload avatar tervalidasi cukup baik di [ProfileController.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Identity/Controllers/ProfileController.php:99>). Untuk SQL Injection dan mass assignment, saya **tidak menemukan celah mayor** pada jalur CRUD yang saya sampling; mayoritas query memakai Eloquent/query builder dan model memakai `fillable`.
 
----
+Hasil verifikasi operasional: `php artisan route:list --except-vendor` **gagal** karena `GlobalSearchController` tidak ter-resolve; `php artisan optimize` **gagal** karena komponen Blade `email-base-text` tidak ditemukan; `php artisan test` **gagal** besar (25 failure) karena kombinasi environment test tidak lengkap (`sqlite` driver tidak ada) dan drift pada unit test.
 
-## Temuan Detail (urut severity)
+**2. Daftar Temuan Kerentanan**
 
-### 1) **Critical** – Hardcoded credential di command route
-Deskripsi: ada API key Mailtrap hardcoded dan command debug email aktif.
-File terdampak: [routes/console.php:28](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/routes/console.php:28), [routes/console.php:38](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/routes/console.php:38)  
-Skenario serangan: key bocor lewat repo/log/screenshot, attacker kirim email abuse/phishing via akun Anda.  
-Fix (Laravel 11):
-```php
-// routes/console.php
-if (app()->environment(['local', 'testing'])) {
-    Artisan::command('send-mail', function () {
-        $apiKey = config('services.mailtrap.api_key');
-        // ...
-    });
-}
-```
-Dan pindahkan key ke env, rotate key sekarang.  
-Refactor: pindahkan command debug ke `app/Console/Commands/Dev/` dan register hanya untuk local/test.
+**Critical**
 
----
+- **Endpoint WhatsApp publik tanpa autentikasi, tanpa signature, tanpa throttle, dan melewati guardrail bisnis.** Route [routes/api.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/routes/api.php:20>) mengekspos `/api/whatsapp/send` langsung ke [WhatsAppController::send](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Http/Controllers/WhatsAppController.php:24>) tanpa `auth`, `throttle`, atau verifikasi asal request. Endpoint ini memakai [WhatsAppService.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Services/WhatsAppService.php:37>) yang langsung menembak provider dengan token aplikasi. Lebih buruk lagi, flow ini **tidak memakai** guardrail di [WaGatewayService.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Services/WaGatewayService.php:50>) seperti quiet hours, daily limit, dan duplicate protection. Dampak: siapa pun yang tahu URL bisa menyalahgunakan nomor/credit WA organisasi untuk spam, phishing, atau denial-of-wallet. Contoh PoC:
+  ```bash
+  curl -X POST http://host/api/whatsapp/send \
+    -H "Content-Type: application/json" \
+    -d "{\"target\":\"62812xxxx\",\"message\":\"spam\"}"
+  ```
 
-### 2) **High** – CAPTCHA verification fail-open
-Deskripsi: jika secret CAPTCHA kosong atau provider error jaringan, validasi dianggap lolos (`return true`).  
-File: [PreAuthRateLimitMiddleware.php:129](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Authentication/Middleware/PreAuthRateLimitMiddleware.php:129), [PreAuthRateLimitMiddleware.php:149](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Authentication/Middleware/PreAuthRateLimitMiddleware.php:149)  
-Skenario: botnet sengaja memicu error provider, challenge ter-bypass, brute-force jadi jauh lebih mudah.  
-Fix:
-```php
-if (empty($secret)) {
-    Log::channel('security')->error('CAPTCHA secret missing');
-    return false; // fail-closed
-}
+- **Secret WA disimpan plaintext di source code, file config runtime, database, dan bisa bocor ke browser.** Token aktif tertanam di [wa_gateway.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Config/wa_gateway.php:10>). Controller juga secara desain menulis ulang secret ke file PHP melalui [persistModuleConfig()](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Controllers/WaGatewayConfigController.php:405>) memakai `File::put`, jadi secret terus hidup di filesystem aplikasi. Selain itu model [WaGatewayConfig.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Models/WaGatewayConfig.php:14>) tidak menyembunyikan atau mengenkripsi field `token`, dan endpoint [getLatestLogs()](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Controllers/WaGatewayConfigController.php:323>) mengembalikan `WaGatewayLog::with('config')` sebagai JSON, sehingga `config.token` berpotensi ikut terkirim ke frontend. Dampak: kebocoran token provider, eskalasi internal, dan kompromi permanen kanal WA.
 
-try {
-   // verify...
-} catch (\Throwable $e) {
-   return false; // fail-closed in production
-}
-```
-Refactor: buat `CaptchaVerificationService` terpisah + circuit breaker + health metric.
+**High**
 
----
+- **Stored/DOM XSS pada dashboard notification dan beberapa popup admin.** Sink utama ada di [app-dashboard.blade.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/resources/views/layouts/app-dashboard.blade.php:302>) yang merender `n.title` dan `n.message` ke `innerHTML`. Source datanya bisa berasal dari nama user yang dapat diubah sendiri lewat [ProfileController.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Identity/Controllers/ProfileController.php:94>) lalu masuk ke `SecurityNotification` dari [User.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Models/User.php:123>) atau [UserBlock.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Identity/Models/UserBlock.php:28>). Jalur ini relevan karena notifikasi admin diambil oleh [NotificationController.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Communication/Controllers/NotificationController.php:22>) dan admin boleh melihat notifikasi user lain menurut [SecurityNotificationPolicy.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/Policies/SecurityNotificationPolicy.php:10>). Skenario serangan: user biasa ubah nama menjadi payload HTML/JS, trigger password change, admin buka dropdown notifikasi, script berjalan di browser admin. Sink DOM XSS tambahan juga ada di [app-popup.blade.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/resources/views/components/app-popup.blade.php:376>), [device/index.blade.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/resources/views/admin/security/device/index.blade.php:193>), [modals.blade.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/resources/views/admin/identity/users/partials/scripts/modals.blade.php:276>), dan command palette [command-palette.js](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/public/assets/js/command-palette.js:255>).
 
-### 3) **High** – Security admin routes tidak memakai session hardening middleware
-Deskripsi: route security hanya pakai `web`,`auth`,`role`, tanpa `ensure.session.version` dan `verify.fingerprint`.  
-File: [app/Modules/Security/routes/web.php:16](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/routes/web.php:16)  
-Skenario: jika session cookie dicuri/terpasang, akses halaman security bisa lolos tanpa verifikasi fingerprint/version revoke.  
-Fix:
-```php
-Route::middleware([
-  'web','auth','ensure.session.version','verify.fingerprint',
-  'role:super-admin,admin,security-officer'
-])->group(...);
-```
-Refactor: buat middleware group standar `auth.hardened` reusable untuk semua route sensitif.
+- **Kredensial nyata ikut tersimpan di file contoh yang ter-track Git.** [`.env.example`](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/.env.example:15>) berisi password database/root yang terlihat seperti kredensial riil, bukan placeholder. Walau ini “hanya example”, tetap termasuk secret exposure karena file tersebut versioned dan biasanya tersebar ke developer/CI. Dampak: lateral movement ke DB/internal services jika nilai itu benar dipakai ulang di environment lain.
 
----
+**Medium**
 
-### 4) **High** – Privilege fallback via `ADMIN_EMAILS`
-Deskripsi: `isAdmin()` mengizinkan admin berdasarkan email list walau tanpa role RBAC.  
-File: [app/Models/User.php:263](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Models/User.php:263), [app/Models/User.php:271](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Models/User.php:271)  
-Skenario: salah konfigurasi/seed email dapat mengangkat privilege tanpa alur RBAC formal.  
-Fix:
-```php
-public function isAdmin(): bool
-{
-    return $this->hasRole(['super-admin','admin']);
-}
-```
-Jika butuh emergency access, gate-kan dengan feature flag + audit ketat.  
-Refactor: hilangkan fallback email, jadikan role table satu-satunya source of truth.
+- **RBAC modul WA tidak konsisten dan cenderung melonggarkan privilege.** Route template di [WaGateway routes](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/routes/web.php:76>) tidak punya middleware `permission:*`, sementara `StoreWaGatewayConfigRequest::authorize()` di [StoreWaGatewayConfigRequest.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Requests/StoreWaGatewayConfigRequest.php:12>) selalu `true`. Di sisi lain controller memanggil `$this->authorize()` untuk config tertentu, tetapi saya **tidak menemukan policy** untuk `WaGatewayConfig`. Dampak: template bisa diubah oleh role yang tidak semestinya, sedangkan akses config tertentu bisa 403/inkonsisten tergantung jalur.
 
----
+- **Information disclosure dan query overhead pada dashboard WA.** [WaGatewayConfigController::index](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Controllers/WaGatewayConfigController.php:31>) men-scope daftar config untuk non-super-admin, tetapi statistik di [baris 48-51](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Controllers/WaGatewayConfigController.php:48>) tetap menghitung **global** seluruh sistem. Selain itu traffic chart di [baris 56-67](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Controllers/WaGatewayConfigController.php:56>) menjalankan query `count()` per jam dalam loop 24x. Dampak: user non-super-admin bisa melihat volume global sistem, dan halaman menjadi lebih berat dari yang perlu.
 
-### 5) **High** – Potensi salah penyimpanan secret TOTP
-Deskripsi: saat setup MFA, `totp_secret` di-encrypt manual, padahal model sudah cast `encrypted`; ini berisiko double-encryption dan verifikasi TOTP gagal.  
-File: [ProfileController.php:226](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Identity/Controllers/ProfileController.php:226), [User.php:108](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Models/User.php:108)  
-Skenario: user terkunci di flow MFA atau fallback tidak konsisten.  
-Fix:
-```php
-$user->update([
-  'mfa_enabled' => true,
-  'mfa_type' => 'totp',
-  'totp_secret' => $secret, // biarkan cast encrypted yang kerja
-]);
-```
-Refactor: ekstrak seluruh setup/confirm MFA ke `MfaEnrollmentService` + integration tests.
+- **CSP/security headers tidak selaras dengan frontend nyata, dan API mengandalkan reverse proxy yang belum menyuntikkan header.** [SecurityHeadersMiddleware.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/Middleware/SecurityHeadersMiddleware.php:39>) menetapkan `script-src 'self' 'nonce-...'`, tetapi layout masih banyak inline script dan CDN eksternal di [app-dashboard.blade.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/resources/views/layouts/app-dashboard.blade.php:46>) tanpa nonce/SRI. Di [bootstrap/app.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/bootstrap/app.php:33>) API malah diasumsikan diamankan reverse proxy, padahal [docker/nginx/default.conf](<D:/WEBSITE/DOCKER/AI-AUTH-02/docker/nginx/default.conf:1>) tidak menambahkan HSTS/CSP/XFO untuk API. Dampak: header defense-in-depth tidak benar-benar bisa diandalkan.
 
----
+- **Readiness deploy gagal: routing, view cache, dan test suite belum stabil.** `route:list` gagal karena route [Identity web.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Identity/routes/web.php:43>) memakai `GlobalSearchController::class` tanpa import, dan controller itu sendiri salah namespace model di [GlobalSearchController.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Identity/Controllers/GlobalSearchController.php:6>). `optimize` gagal karena email memakai `<x-email-base-text>` di [otp-text.blade.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/resources/views/emails/otp-text.blade.php:1>) padahal komponen yang ada adalah [components/email/base-text.blade.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/resources/views/components/email/base-text.blade.php:1>). `php artisan test` juga gagal besar karena environment test belum siap dan beberapa unit test sudah drift dari implementasi. Dampak: deployment berisiko, rollback validation lemah, dan build pipeline tidak dapat dipercaya.
 
-### 6) **Medium** – Bug logika fallback risk scoring (IP risk jadi nol)
-Deskripsi: payload `ip_risk_score` dinormalisasi 0..1, tapi di fallback di-cast ke int => hampir selalu 0.  
-File: [LoginRiskService.php:48](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Authentication/Services/LoginRiskService.php:48), [RiskFallbackService.php:71](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/Services/RiskFallbackService.php:71)  
-Skenario: saat AI down, decision jadi terlalu permisif.  
-Fix:
-```php
-$ipRisk = (float) ($riskPayload['ip_risk_score'] ?? 0.0); // 0..1
-$score += (int) round(($ipRisk * 100) * $weights['ip_risk_multiplier']);
-```
-Refactor: samakan kontrak DTO risk payload (typed object), jangan array bebas.
+- **Migrasi database bersifat destruktif untuk tabel audit keamanan.** [2026_03_23_000000_upgrade_security_notifications_table_v2.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/database/migrations/2026_03_23_000000_upgrade_security_notifications_table_v2.php:14>) melakukan `Schema::dropIfExists('security_notifications')` lalu membuat ulang tabel. Dampak: histori notifikasi keamanan bisa hilang saat migrasi salah dieksekusi di environment yang sudah berisi data audit.
 
----
+- **Endpoint system health dapat memicu artisan command dari request user login biasa.** [security routes](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/routes/web.php:70>) menaruh `/dashboard/api/system/health` hanya di bawah `auth`, dan [SystemHealthController.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/Controllers/SystemHealthController.php:22>) menjalankan `Artisan::call('app:check-system-health')` jika cache kosong. Dampak: abuse ringan untuk men-trigger pekerjaan server dari web request dan memperbesar permukaan DoS internal.
 
-### 7) **Medium** – GeoIP pakai HTTP plaintext + fallback negara statis
-Deskripsi: lookup ke `http://ip-api.com/...` tanpa TLS, fallback `ID` statis.  
-File: [GeoIpService.php:27](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/Services/GeoIpService.php:27), [GeoIpService.php:46](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/Services/GeoIpService.php:46)  
-Skenario: MITM memanipulasi country sehingga risk decision bias.  
-Fix: pakai provider HTTPS + timeout + signed response bila ada.
-Refactor: buat `GeoIpProviderInterface` dengan fallback chain terukur.
+**Low**
 
----
+- **Monitoring alert WA di middleware rate limit kemungkinan gagal diam-diam.** [PreAuthRateLimitMiddleware.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Authentication/Middleware/PreAuthRateLimitMiddleware.php:14>) mengimpor `App\Modules\WhatsAppGateway\Jobs\SendWhatsAppNotification`, tetapi namespace/module itu tidak ada. Dampak: alert keamanan saat brute force bisa tidak terkirim walau limiternya tetap bekerja.
 
-### 8) **Medium** – API auth pakai session guard pada group API
-Deskripsi: `/api/auth/logout` pakai `auth` session middleware pada group API.  
-File: [app/Modules/Authentication/routes/api.php:45](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Authentication/routes/api.php:45)  
-Skenario: boundary web/api jadi kabur; rawan salah konfigurasi CSRF/cookie policy lintas client.  
-Fix: pakai `auth:sanctum` (token-based) untuk API, atau pindahkan endpoint session-auth ke web route + CSRF.  
-Refactor: pisah tegas `WebSessionAuth` vs `ApiTokenAuth`.
+- **Dependency pinning longgar.** [composer.json](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/composer.json:11>) masih memakai versi wildcard untuk `jenssegers/agent` dan `fakerphp/faker`. Saat ini `composer audit` bersih, tetapi praktik ini memperbesar risiko supply-chain dan drift antar environment.
 
----
+**3. Rekomendasi Perbaikan yang Spesifik dan Actionable**
 
-### 9) **Medium** – Security control overbroad (role-only, tanpa permission granular)
-Deskripsi: security routes mengandalkan role global; action sensitif seperti whitelist IP tidak diproteksi permission spesifik.  
-File: [SecurityController.php:89](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/Controllers/SecurityController.php:89), [Security/routes/web.php:16](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Security/routes/web.php:16)  
-Skenario: role yang seharusnya observability-only bisa mengubah whitelist/blacklist.  
-Fix: tambahkan middleware permission per endpoint (`ip-list.whitelist`, `ip-list.blacklist`, dll).  
-Refactor: gunakan policy + command handlers per action sensitif.
+1. **Tutup total endpoint `/api/whatsapp/send` dari publik**. Jika memang perlu API outbound, lindungi dengan `auth:sanctum` atau HMAC signature middleware, tambahkan rate limiter khusus, allowlist caller, dan pindahkan implementasi ke `WaGatewayService` agar guardrail aktif.
+   ```php
+   Route::post('/whatsapp/send', [WhatsAppController::class, 'send'])
+       ->middleware(['auth:sanctum', 'throttle:wa-send', 'verified-caller']);
+   ```
 
----
+2. **Hentikan penyimpanan secret di source/config file.** Hapus token dari file [wa_gateway.php](<D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/WaGateway/Config/wa_gateway.php:10>), hapus mekanisme `persistModuleConfig()`, simpan secret di secret manager atau `.env` yang tidak ter-track, dan untuk token per-config gunakan enkripsi atribut model.
+   ```php
+   protected $casts = ['token' => 'encrypted', 'meta' => 'array'];
+   protected $hidden = ['token'];
+   ```
 
-### 10) **Medium** – Exposure service infrastruktur ke host
-Deskripsi: MySQL dan Redis di-publish ke host (`3307`, `6379`).  
-File: [docker-compose.yml:170](/D:/WEBSITE/DOCKER/AI-AUTH-02/docker-compose.yml:170), [docker-compose.yml:190](/D:/WEBSITE/DOCKER/AI-AUTH-02/docker-compose.yml:190)  
-Skenario: port scanning lokal/VPN/host compromise -> brute-force service langsung.  
-Fix: jangan expose port internal di production; atau bind `127.0.0.1:3307:3306`.  
-Refactor: profile compose `dev` vs `prod` terpisah.
+3. **Perbaiki semua sink `innerHTML` untuk data dinamis.** Di notification dropdown, popup, dan command palette, ganti ke `textContent`/DOM node builder. Jika memang harus render HTML terbatas, sanitasi dulu dengan library seperti DOMPurify.
+   ```js
+   titleEl.textContent = n.title;
+   messageEl.textContent = n.message;
+   ```
 
----
+4. **Rapikan authorization modul WA.** Tambahkan middleware permission pada route template, buat `WaGatewayConfigPolicy`, dan pastikan endpoint JSON tidak mengembalikan field sensitif (`token`, secret provider, raw response sensitif).
 
-### 11) **Low** – Ruang OTP mengecil (tidak mengizinkan leading zero)
-Deskripsi: OTP generator mulai dari `100000`, bukan `000000`.  
-File: [OtpService.php:160](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Authentication/Services/OtpService.php:160)  
-Skenario: entropy sedikit turun (1,000,000 -> 900,000).  
-Fix:
-```php
-$max = (10 ** $length) - 1;
-$code = random_int(0, $max);
-return str_pad((string) $code, $length, '0', STR_PAD_LEFT);
-```
-Refactor: buat util generator terpusat + test statistik sederhana.
+5. **Perbaiki readiness pipeline sebelum deploy.** Minimal targetnya: `php artisan route:list`, `php artisan optimize`, dan `php artisan test` harus hijau. Khusus temuan saat ini: import `GlobalSearchController`, koreksi model `User` di controller search, ubah komponen email menjadi `x-email.base-text`, install/aktifkan driver test yang dibutuhkan, dan sinkronkan unit test yang sudah drift.
 
----
+6. **Ganti migrasi destruktif dengan migrasi alter/additive.** Untuk `security_notifications`, gunakan `Schema::table()`/backfill, bukan `dropIfExists()`.
 
-### 12) **Low** – Drift konfigurasi/testing menurunkan keandalan audit keamanan
-Deskripsi:
-- Blade directive timezone memanggil endpoint yang tidak ada (`/api/v1/timezone/set`).
-- Sebagian test auth masih pakai namespace lama (`App\DTOs`, `App\Services`), berpotensi tidak jalan sesuai kode aktual.
-File: [TimezoneServiceProvider.php:85](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/app/Modules/Timezone/TimezoneServiceProvider.php:85), [LoginRiskAssessmentTest.php:5](/D:/WEBSITE/DOCKER/AI-AUTH-02/laravel-auth-ai/tests/Feature/Auth/LoginRiskAssessmentTest.php:5)  
-Skenario: false sense of security karena test suite tidak merepresentasikan runtime aktual.  
-Fix: sinkronkan endpoint & update namespace test ke modul sekarang.  
-Refactor: buat test matrix `AuthFlow`, `RBAC`, `SessionBinding`, `MFA`, `RateLimit`.
+7. **Batasi endpoint health dan admin-only metrics.** `/dashboard/api/system/health` sebaiknya hanya untuk role admin/security tertentu atau dipindah ke jalur internal/ops.
 
----
+8. **Hardening deploy.** Jangan expose `phpMyAdmin`, port FastAPI internal, atau bind mount source code pada stack production. Pastikan `APP_DEBUG=false`, `APP_URL=https://...`, secure cookie aktif, TLS terminasi benar, dan header HSTS/CSP/XFO/XCTO diset konsisten di reverse proxy.
 
-## Rekomendasi Struktur Refactor (Clean Architecture)
+**4. Checklist Validasi Production Ready**
 
-Struktur saat ini sudah modular, tapi masih ada coupling tinggi di controller/service/model event. Saran:
+- [ ] Tidak ada secret aktif di Git, `.env.example`, file config PHP, screenshot, atau cache build.
+- [ ] `/api/whatsapp/send` tidak bisa diakses publik tanpa auth/signature/throttle.
+- [ ] Semua token/credential gateway terenkripsi at-rest dan disembunyikan dari JSON serialization.
+- [ ] Semua sink `innerHTML` untuk data dinamis sudah dihapus atau disanitasi.
+- [ ] `php artisan route:list`, `php artisan optimize`, dan `php artisan test` lulus penuh.
+- [ ] `APP_DEBUG=false`, `APP_ENV=production`, `APP_URL` memakai HTTPS.
+- [ ] Reverse proxy menambahkan HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, dan CSP yang benar-benar kompatibel.
+- [ ] phpMyAdmin, port internal FastAPI, dan service dev-only tidak diekspos di production.
+- [ ] Policy/permission untuk seluruh CRUD admin konsisten, termasuk modul WA template/config/log.
+- [ ] Endpoint health/ops tidak bisa dijalankan user biasa.
+- [ ] Migrasi production bersifat additive dan punya backup/rollback plan.
+- [ ] Monitoring/alert security benar-benar berfungsi dan namespace job tidak broken.
 
-```text
-app/
-  Domain/
-    Auth/
-      Entities/
-      ValueObjects/
-      Policies/
-      Events/
-    Security/
-    Identity/
-    Authorization/
-  Application/
-    Auth/
-      Commands/
-      Handlers/
-      DTO/
-      UseCases/
-    Security/
-  Infrastructure/
-    Persistence/Eloquent/
-    Http/Controllers/Web/
-    Http/Controllers/Api/
-    Services/External/
-      AiRisk/
-      GeoIp/
-      Captcha/
-  Interfaces/
-    Http/Middleware/
-    Console/Commands/
-```
+**5. Kesimpulan Akhir**
 
-Prinsip yang disarankan:
-1. Controller tipis, semua orkestrasi ke UseCase/Handler.
-2. Hindari side-effect berat di Eloquent `booted()`; pindahkan ke domain event listener/queue.
-3. Satu kontrak `RiskContext DTO` lintas AI dan fallback.
-4. Middleware chain standar untuk route sensitif (`auth.hardened`).
-5. Environment hardening: secret manager + rotasi key + larangan hardcoded secret via CI scan (`gitleaks`, `trufflehog`).
-
----
-
-## Prioritas eksekusi (disarankan)
-1. Cabut/rotate semua secret yang terekspos, hapus hardcoded key (Critical).
-2. Ubah CAPTCHA ke fail-closed dan perketat security route middleware (High).
-3. Perbaiki TOTP secret storage + fallback risk bug (High/Medium).
-4. Rapikan boundary web/api auth dan permission granularity (Medium).
-5. Refactor bertahap ke use-case layer + test alignment (Medium/Low).
-
-Kalau kamu mau, saya bisa lanjutkan dengan **patch konkret per file** (langsung implementasi) mulai dari 3 prioritas teratas dulu.
+Kesimpulan saya: **sistem ini belum layak production** dalam kondisi saat ini. Jika dua area paling berbahaya tidak segera ditutup, yaitu **endpoint WA publik** dan **secret management plaintext**, maka risiko penyalahgunaan kanal komunikasi dan kompromi kredensial sangat tinggi. Setelah itu, prioritas berikutnya adalah **menutup Stored/DOM XSS**, **merapikan RBAC**, dan **membuat pipeline deploy/test benar-benar hijau**.

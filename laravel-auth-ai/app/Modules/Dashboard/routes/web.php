@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Modules\Dashboard\Controllers\DashboardController;
+use App\Modules\Dashboard\Controllers\GuestPortalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,3 +24,12 @@ Route::middleware(['auth', 'ensure.session.version', 'verify.fingerprint', 'role
             ->name('dashboard');
 
     });
+
+/*
+|--------------------------------------------------------------------------
+| Guest Portal — untuk user login dengan role tapi tanpa akses dashboard
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'ensure.session.version', 'verify.fingerprint'])
+    ->get('/guest-portal', [GuestPortalController::class, 'index'])
+    ->name('guest.portal');

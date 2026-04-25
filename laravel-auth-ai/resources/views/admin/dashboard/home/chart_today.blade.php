@@ -1,7 +1,7 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
     {{-- Card 1: Login Sukses Hari Ini --}}
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-4">
         <div class="flex items-center justify-between mb-3">
             <div>
                 <div class="flex items-center gap-1.5 mb-0.5">
@@ -23,7 +23,7 @@
     </div>
 
     {{-- Card 2: Login OTP Hari Ini --}}
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-4">
         <div class="flex items-center justify-between mb-3">
             <div>
                 <div class="flex items-center gap-1.5 mb-0.5">
@@ -45,7 +45,7 @@
     </div>
 
     {{-- Card 3: Login Gagal & Block Hari Ini --}}
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-xl p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/60 rounded-sm p-4">
         <div class="flex items-center justify-between mb-3">
             <div>
                 <div class="flex items-center gap-2 mb-0.5">

@@ -69,7 +69,7 @@ class TotpMfaStrategy implements MfaStrategyInterface
         // 1. Coba verifikasi kode TOTP standar
         // [H-04 FIX] totp_secret sudah di-decrypt otomatis oleh Eloquent 'encrypted' cast
         $secret  = $user->totp_secret; // ← sudah plaintext berkat cast 'encrypted'
-        $isValid = Google2FA::verifyKey($secret, $code);
+        $isValid = Google2FA::verifyKey($secret, $code, 0);
 
         // 2. Jika gagal, coba verifikasi sebagai Backup Code
         if (!$isValid && strlen($code) >= 8) { // Backup code biasanya lebih panjang

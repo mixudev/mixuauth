@@ -73,9 +73,15 @@ Route::middleware(['auth', 'ensure.session.version', 'verify.fingerprint', 'role
             ->name('config.test');
 
         // Templates - Manajemen template pesan
-        Route::post('templates', [WaGatewayConfigController::class, 'storeTemplate'])->name('templates.store');
-        Route::put('templates/{template}', [WaGatewayConfigController::class, 'updateTemplate'])->name('templates.update');
-        Route::delete('templates/{template}', [WaGatewayConfigController::class, 'destroyTemplate'])->name('templates.destroy');
+        Route::post('templates', [WaGatewayConfigController::class, 'storeTemplate'])
+            ->middleware('permission:wa-gateway.templates.manage')
+            ->name('templates.store');
+        Route::put('templates/{template}', [WaGatewayConfigController::class, 'updateTemplate'])
+            ->middleware('permission:wa-gateway.templates.manage')
+            ->name('templates.update');
+        Route::delete('templates/{template}', [WaGatewayConfigController::class, 'destroyTemplate'])
+            ->middleware('permission:wa-gateway.templates.manage')
+            ->name('templates.destroy');
 
         // Logs - Ambil logs terbaru untuk dashboard
         Route::get('logs/latest', [WaGatewayConfigController::class, 'getLatestLogs'])

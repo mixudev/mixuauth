@@ -68,7 +68,7 @@ class="relative mt-1">
          x-transition:leave="transition ease-in duration-100"
          x-transition:leave-start="opacity-100 translate-y-0 scale-100"
          x-transition:leave-end="opacity-0 translate-y-1 scale-95"
-         class="absolute z-[100] w-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden">
+         class="absolute z-[100] w-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-sm shadow-2xl overflow-hidden">
         
         <div class="p-2 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-black/20">
             <div class="relative">

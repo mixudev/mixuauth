@@ -3,6 +3,7 @@
 use App\Modules\Identity\Controllers\EmailVerificationController;
 use App\Modules\Identity\Controllers\UserManagementController;
 use App\Modules\Identity\Controllers\ProfileController;
+use App\Modules\Identity\Controllers\GlobalSearchController;
 use Illuminate\Support\Facades\Route;
 
 /*

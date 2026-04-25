@@ -52,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
         // Gate rules and Role/Permission policies have been moved to App\Modules\Authorization\AuthorizationServiceProvider
 
         Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(\App\Modules\WaGateway\Models\WaGatewayConfig::class, \App\Modules\WaGateway\Policies\WaGatewayConfigPolicy::class);
 
         // ── Rate Limiters ─────────────────────────────────────────────────────
         RateLimiter::for('mfa', static function ($request) {
@@ -78,6 +79,18 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('admin-actions', static function ($request) {
             $userId = (string) optional($request->user())->id;
             return Limit::perMinute(30)->by($userId !== '' ? $userId : $request->ip());
+        });
+
+        // Rate limiter untuk endpoint WA send — mencegah abuse kredit WA organisasi
+        RateLimiter::for('wa-send', static function ($request) {
+            $userId = (string) optional($request->user())->id;
+            return Limit::perMinute(10)->by($userId !== '' ? $userId : $request->ip());
+        });
+
+        // Rate limiter untuk endpoint system health — mencegah trigger artisan berulang
+        RateLimiter::for('system-health', static function ($request) {
+            $userId = (string) optional($request->user())->id;
+            return Limit::perMinute(1)->by($userId !== '' ? $userId : $request->ip());
         });
 
         // ── View Composer ─────────────────────────────────────────────────────

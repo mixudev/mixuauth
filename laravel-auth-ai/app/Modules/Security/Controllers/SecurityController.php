@@ -29,7 +29,44 @@ class SecurityController extends Controller
             })
             ->latest()
             ->paginate(15);
-        return view('security::device.index', compact('devices'));
+
+        $stats = [
+            'total' => TrustedDevice::count(),
+            'active' => TrustedDevice::active()->count(),
+            'revoked' => TrustedDevice::where('is_revoked', true)->count(),
+            'expired' => TrustedDevice::where('is_revoked', false)
+                        ->whereNotNull('trusted_until')
+                        ->where('trusted_until', '<', now())
+                        ->count(),
+        ];
+
+        return view('admin.security.device.index', compact('devices', 'stats'));
+    }
+
+    /**
+     * Get device details via AJAX.
+     */
+    public function deviceDetails(TrustedDevice $device) {
+        $device->load('user:id,name,email');
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $device->id,
+                'user_name' => $device->user->name ?? 'Unknown',
+                'user_email' => $device->user->email ?? '-',
+                'browser' => $device->browser_name,
+                'os' => $device->os_name,
+                'device_type' => $device->device_type ?? 'Unknown',
+                'ip' => $device->ip_address,
+                'country' => $device->country_code ?? 'XX',
+                'fingerprint' => $device->fingerprint_hash,
+                'is_revoked' => $device->is_revoked,
+                'is_expired' => $device->trusted_until && $device->trusted_until < now(),
+                'created_at' => $device->created_at->format('d M Y, H:i'),
+                'last_seen_at' => $device->last_seen_at ? $device->last_seen_at->format('d M Y, H:i') : 'Never',
+                'trusted_until' => $device->trusted_until ? $device->trusted_until->format('d M Y, H:i') : 'Indefinite',
+            ]
+        ]);
     }
 
     public function revokeDevice(TrustedDevice $device) {
@@ -100,15 +137,79 @@ class SecurityController extends Controller
     // ── AUTH LOGS ──────────────────────────────────────────────────────
     public function logs(Request $request) {
         $search = $request->query('search');
-        $logs = LoginLog::with('user:id,name,email')
+        $status = $request->query('status');
+        
+        $query = LoginLog::with('user:id,name,email')
             ->when($search, function($q) use ($search) {
                 $q->where('email_attempted', 'like', "%{$search}%")
-                  ->orWhere('ip_address', 'like', "%{$search}%")
-                  ->orWhere('status', 'like', "%{$search}%");
+                  ->orWhere('ip_address', 'like', "%{$search}%");
             })
-            ->latest('occurred_at')
-            ->paginate(20);
+            ->when($status, function($q) use ($status) {
+                $q->where('status', $status);
+            });
+
+        $logs = $query->latest('occurred_at')->paginate(20)->withQueryString();
+        
+        // Detailed Stats
+        $stats = [
+            'total'   => LoginLog::count(),
+            'success' => LoginLog::where('status', 'success')->count(),
+            'failed'  => LoginLog::where('status', 'failed')->count(),
+            'blocked' => LoginLog::where('status', 'blocked')->count(),
+            'otp'     => LoginLog::where('status', 'otp_required')->count(),
+        ];
             
-        return view('security::log.index', compact('logs'));
+        return view('admin.security.log.index', compact('logs', 'stats'));
+    }
+
+    /**
+     * Get log details via AJAX.
+     */
+    public function logDetails(LoginLog $log) {
+        $agent = new \Jenssegers\Agent\Agent();
+        $agent->setUserAgent($log->user_agent);
+        
+        $browser = $agent->browser();
+        $platform = $agent->platform();
+        $device = $agent->device();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $log->id,
+                'email' => $log->email_attempted,
+                'ip' => $log->ip_address,
+                'status' => $log->status,
+                'risk_score' => $log->risk_score,
+                'decision' => $log->decision,
+                'reason_flags' => $log->reason_flags,
+                'country_code' => $log->country_code,
+                'ua' => $log->user_agent,
+                'browser' => $browser ?: 'Unknown',
+                'browser_version' => $agent->version($browser) ?: '',
+                'platform' => $platform ?: 'Unknown',
+                'platform_version' => $agent->version($platform) ?: '',
+                'device' => $agent->isDesktop() ? 'Desktop' : ($agent->isTablet() ? 'Tablet' : ($agent->isMobile() ? 'Mobile' : 'Unknown')),
+                'occurred_at' => $log->occurred_at->format('d M Y, H:i:s'),
+                'raw' => $log->ai_response_raw
+            ]
+        ]);
+    }
+
+    /**
+     * Bulk delete logs by date range.
+     */
+    public function bulkDeleteLogs(Request $request) {
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $count = LoginLog::whereBetween('occurred_at', [$request->start_date, $request->end_date])->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$count} log keamanan berhasil dihapus secara permanen."
+        ]);
     }
 }

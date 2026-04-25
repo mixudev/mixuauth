@@ -75,10 +75,10 @@ class AuthFlowService
 
             if ($user->otp_preference === User::OTP_ALWAYS) {
                 return $this->handleMfaDecision($request, $user, new RiskAssessmentResult(
-                    riskScore:   100,
+                    riskScore:   0,
                     decision:    'MFA',
                     reasonFlags: ['user_preference_always'],
-                    rawResponse: ['source' => 'user_settings'],
+                    rawResponse: ['source' => 'user_settings', 'enforcement' => 'always_otp'],
                     payload:     []
                 ));
             }
@@ -204,6 +204,45 @@ class AuthFlowService
             'status'      => 'authenticated',
             'http_status' => Response::HTTP_OK,
             'message'     => 'Verifikasi berhasil. Selamat datang!',
+            'user'        => $this->serializeUser($result),
+        ];
+    }
+
+    /**
+     * Verifikasi login menggunakan Backup Code.
+     */
+    public function verifyRecoveryCode(Request $request, string $sessionToken, string $recoveryCode): array
+    {
+        $otpRecord = OtpVerification::where('session_token_hash', hash('sha256', $sessionToken))
+            ->whereNull('verified_at')
+            ->first();
+
+        if (! $otpRecord) {
+            return $this->error('invalid_session', 'Sesi verifikasi tidak valid.', Response::HTTP_GONE, 'INVALID_SESSION');
+        }
+
+        $user = User::find($otpRecord->user_id);
+        if (! $user) {
+            return $this->error('invalid_session', 'Sesi verifikasi tidak valid.', Response::HTTP_GONE, 'INVALID_SESSION');
+        }
+
+        // Gunakan fungsi useBackupCode yang ada di model User (otomatis hapus kode jika cocok)
+        if (! $user->useBackupCode($recoveryCode)) {
+            return $this->error('invalid_code', 'Kode cadangan tidak valid atau sudah pernah digunakan.', Response::HTTP_UNPROCESSABLE_ENTITY, 'INVALID_CODE');
+        }
+
+        // Catat penggunaan kode cadangan di log keamanan
+        Log::channel('security')->warning('User login menggunakan Backup Code (Fail-safe triggered)', [
+            'user_id' => $user->id,
+            'ip'      => $this->fingerprintService->getRealIp($request),
+        ]);
+
+        $result = $this->completeAuthenticatedSession($request, $user, false, true, $otpRecord->id);
+
+        return [
+            'status'      => 'authenticated',
+            'http_status' => Response::HTTP_OK,
+            'message'     => 'Berhasil masuk menggunakan kode cadangan. Harap segera periksa aplikasi autentikator Anda.',
             'user'        => $this->serializeUser($result),
         ];
     }
@@ -397,7 +436,7 @@ class AuthFlowService
         );
     }
 
-    private function completeAuthenticatedSession(
+    public function completeAuthenticatedSession(
         Request $request,
         User    $user,
         bool    $remember = false,
@@ -408,7 +447,34 @@ class AuthFlowService
 
         if ($request->hasSession()) {
             $request->session()->regenerate();
-            $request->session()->put('auth_device_fingerprint', $this->fingerprintService->generate($request));
+            
+            // [S-01 FIX] Ambil fingerprint saat ini
+            $fingerprint = $this->fingerprintService->generate($request);
+            
+            // [M-02 FIX] Untuk perangkat baru, rotate cookie UUID setelah login
+            $isNewDevice = ! $this->trustedDeviceRepo->isTrusted($user->id, $fingerprint);
+            
+            if ($isNewDevice) {
+                $newDeviceId = $this->fingerprintService->generateNewDeviceId();
+                $cookieMinutes = (int) config('security.session.trusted_device_cookie_minutes', 60 * 24 * 30);
+
+                \Illuminate\Support\Facades\Cookie::queue(
+                    \App\Modules\Security\Middleware\DeviceIdentifierMiddleware::COOKIE_NAME,
+                    $newDeviceId,
+                    $cookieMinutes,
+                    '/',
+                    null,
+                    $request->isSecure(),
+                    true,   // httpOnly
+                    false,
+                    'Lax'
+                );
+
+                // Update fingerprint untuk sesi agar sesuai dengan cookie baru yang akan dikirim
+                $fingerprint = hash('sha256', $newDeviceId);
+            }
+
+            $request->session()->put('auth_device_fingerprint', $fingerprint);
             $request->session()->put('auth_session_version', (int) $user->session_version);
         }
 
@@ -424,28 +490,7 @@ class AuthFlowService
             $this->fingerprintService->buildDeviceLabel($request)
         );
 
-        // [M-02 FIX] Untuk perangkat baru, rotate cookie UUID setelah login
-        $currentFingerprint = $this->fingerprintService->generate($request);
-        $isNewDevice        = ! $this->trustedDeviceRepo->isTrusted($user->id, $currentFingerprint);
-
         $this->trustedDeviceRepo->trustDevice($user->id, $request);
-
-        if ($isNewDevice && $request->hasSession()) {
-            $newDeviceId   = $this->fingerprintService->generateNewDeviceId();
-            $cookieMinutes = (int) config('security.session.trusted_device_cookie_minutes', 60 * 24 * 30);
-
-            \Illuminate\Support\Facades\Cookie::queue(
-                \App\Modules\Security\Middleware\DeviceIdentifierMiddleware::COOKIE_NAME,
-                $newDeviceId,
-                $cookieMinutes,
-                '/',
-                null,
-                $request->isSecure(),
-                true,   // httpOnly
-                false,
-                'Lax'
-            );
-        }
 
         return $user->fresh();
     }

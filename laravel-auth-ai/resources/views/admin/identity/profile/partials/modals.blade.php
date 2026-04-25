@@ -42,7 +42,7 @@
                             </svg>
                         </div>
                         <h4 class="text-lg font-bold text-slate-900 dark:text-white">Berhasil Diaktifkan!</h4>
-                        <p class="text-xs text-slate-500 mt-2">Simpan kode cadangan ini di tempat yang aman.</p>
+                        <p class="text-xs text-slate-500 mt-2">Simpan kode cadangan ini di tempat yang aman. Kode cadangan juga telah dikirim ke email Anda.</p>
                     </div>
                     <div id="backupCodesList" class="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700"></div>
                     <button onclick="window.location.reload()" class="w-full h-11 rounded-xl bg-slate-900 dark:bg-slate-100 dark:text-slate-900 text-white font-semibold text-sm transition-all">

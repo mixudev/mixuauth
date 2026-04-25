@@ -87,6 +87,19 @@
                     Access Control</p>
                 <ul class="space-y-0.5">
                     <li>
+                        <a href="{{ route('dashboard.access-management.index') }}" data-page="access_management" class="sidebar-link {{ request()->routeIs('dashboard.access-management*') ? 'active' : '' }}" aria-label="Access Management">
+                            <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                                    class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </span>
+                            <span class="sidebar-label">Management</span>
+                            <span class="sidebar-tooltip">Access Management</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('dashboard.roles.index') }}" data-page="roles" class="sidebar-link {{ request()->routeIs('dashboard.roles*') ? 'active' : '' }}" aria-label="Roles">
                             <span class="sidebar-icon w-5 h-5 flex-shrink-0 flex items-center justify-center">
                                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"

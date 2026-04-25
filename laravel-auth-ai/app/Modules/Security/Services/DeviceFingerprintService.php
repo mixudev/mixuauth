@@ -22,10 +22,41 @@ class DeviceFingerprintService
 
     /**
      * Dapatkan IP asli pengunjung dengan memeriksa header proxy yang umum.
+     * Jika di lingkungan local/dev, mencoba mengambil IP publik asli perangkat untuk keperluan Risk AI.
      */
     public function getRealIp(Request $request): string
     {
-        return (string) $request->ip();
+        $ip = (string) $request->ip();
+
+        // Daftar IP lokal/private yang perlu di-bypass di mode development
+        $localIps = ['127.0.0.1', '::1', '172.', '192.168.', '10.'];
+        $isLocal = false;
+        foreach ($localIps as $prefix) {
+            if (str_starts_with($ip, $prefix)) {
+                $isLocal = true;
+                break;
+            }
+        }
+
+        // Jika IP terdeteksi lokal dan bukan di production, coba ambil IP publik asli
+        if ($isLocal && config('app.env') !== 'production') {
+            return cache()->remember('real_public_ip_' . $ip, 3600, function () use ($ip) {
+                try {
+                    $client = new \GuzzleHttp\Client(['timeout' => 2]);
+                    $response = $client->get('https://api.ipify.org');
+                    $publicIp = (string) $response->getBody();
+                    
+                    if (filter_var($publicIp, FILTER_VALIDATE_IP)) {
+                        return $publicIp;
+                    }
+                } catch (\Exception $e) {
+                    // Fallback ke IP lokal jika gagal fetch
+                }
+                return $ip;
+            });
+        }
+
+        return $ip;
     }
 
     /**

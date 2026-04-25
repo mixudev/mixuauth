@@ -24,6 +24,7 @@ Route::middleware(['auth', 'ensure.session.version', 'verify.fingerprint'])->gro
                 // API Endpoints
                 Route::get('/api', 'index')->name('index');
                 Route::post('/api/read-all', 'markAsRead')->name('read-all');
+                Route::post('/api/bulk-delete', 'bulkDelete')->name('bulk-delete');
                 Route::post('/api/{notification}/read', 'markOneRead')->name('mark-read');
                 Route::delete('/api/{notification}', 'delete')->name('delete');
             });

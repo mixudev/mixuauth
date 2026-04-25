@@ -3,7 +3,7 @@
 namespace App\Modules\Identity\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Identity\Models\User;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -14,7 +14,11 @@ class GlobalSearchController extends Controller
      */
     public function search(Request $request): JsonResponse
     {
-        $query = $request->get('q');
+        if (! $request->user() || ! $request->user()->hasPermission('users.view')) {
+            return response()->json([]);
+        }
+
+        $query = trim((string) $request->get('q', ''));
         
         if (strlen($query) < 2) {
             return response()->json([]);
@@ -23,8 +27,12 @@ class GlobalSearchController extends Controller
         $results = [];
 
         // Search Users
-        $users = User::where('name', 'LIKE', "%{$query}%")
-            ->orWhere('email', 'LIKE', "%{$query}%")
+        $users = User::query()
+            ->select(['id', 'name', 'email'])
+            ->where(function ($builder) use ($query) {
+                $builder->where('name', 'LIKE', "%{$query}%")
+                    ->orWhere('email', 'LIKE', "%{$query}%");
+            })
             ->limit(5)
             ->get();
 

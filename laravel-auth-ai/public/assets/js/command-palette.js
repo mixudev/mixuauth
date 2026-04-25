@@ -251,19 +251,36 @@ window.CommandPalette = {
             };
         }
 
-        // Gunakan innerHTML aman (label & category berasal dari internal atau API terkontrol)
-        a.innerHTML = `
-            <div class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:text-violet-500 transition-colors">
-                <div class="w-4 h-4">${item.icon}</div>
-            </div>
-            <div class="flex-1">
-                <div class="text-[13px] font-medium text-slate-700 dark:text-slate-100">${item.title}</div>
-                <div class="text-[10px] text-slate-400 font-mono uppercase tracking-wider">${item.category}</div>
-            </div>
-            <div class="text-slate-300 dark:text-slate-600 opacity-0 group-[.active]:opacity-100 transition-opacity">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            </div>
-        `;
+        // ── Safe DOM builder — item.title & item.category via textContent ──
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:text-violet-500 transition-colors';
+        const iconInner = document.createElement('div');
+        iconInner.className = 'w-4 h-4';
+        // item.icon berasal dari konstanta internal sidebar atau SVG hardcoded — aman
+        iconInner.innerHTML = item.icon;
+        iconWrap.appendChild(iconInner);
+
+        const textWrap = document.createElement('div');
+        textWrap.className = 'flex-1';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'text-[13px] font-medium text-slate-700 dark:text-slate-100';
+        titleEl.textContent = item.title; // textContent — XSS safe
+
+        const catEl = document.createElement('div');
+        catEl.className = 'text-[10px] text-slate-400 font-mono uppercase tracking-wider';
+        catEl.textContent = item.category; // textContent — XSS safe
+
+        textWrap.appendChild(titleEl);
+        textWrap.appendChild(catEl);
+
+        const chevron = document.createElement('div');
+        chevron.className = 'text-slate-300 dark:text-slate-600 opacity-0 group-[.active]:opacity-100 transition-opacity';
+        chevron.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>';
+
+        a.appendChild(iconWrap);
+        a.appendChild(textWrap);
+        a.appendChild(chevron);
 
         a.onmouseenter = () => {
             this.activeIndex = index;

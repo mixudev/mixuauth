@@ -212,6 +212,7 @@
             dashboard: 'Dashboard',
             applications: 'Applications',
             users: 'Users',
+            access_management: 'Access Management',
             roles: 'Roles',
             permissions: 'Permissions',
             logs: 'Authentication Logs',
@@ -299,7 +300,8 @@
                     return;
                 }
 
-                list.innerHTML = res.data.map(n => {
+                list.innerHTML = '';
+                res.data.forEach(n => {
                     let bg, text, icon;
                     if (n.type === 'error' || n.type === 'failed') {
                         bg = 'bg-red-100 dark:bg-red-900/40';
@@ -315,30 +317,58 @@
                         icon = '<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />';
                     }
 
-                    return `
-                        <div class="notif-item px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex gap-3 items-start relative group">
-                            <span class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${bg} ${text}">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    ${icon}
-                                </svg>
-                            </span>
-                            <div class="flex-1 min-w-0">
-                                <div class="text-[11px] font-semibold text-slate-800 dark:text-slate-200">${n.title}</div>
-                                <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5" style="line-height: 1.3;">${n.message}</div>
-                                <div class="text-[9px] font-mono text-slate-400 mt-1">${n.time_ago}</div>
-                            </div>
-                            ${!n.read_at ? '<span class="unread-dot w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0 mt-1.5"></span>' : ''}
-                            
-                            <div class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onclick="deleteNotif(${n.id}, event)" class="p-1 text-slate-400 hover:text-red-500 transition-colors" title="Delete">
-                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                    // ── Safe DOM builder — tidak ada innerHTML untuk data dinamis ──
+                    const item = document.createElement('div');
+                    item.className = 'notif-item px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex gap-3 items-start relative group';
+
+                    // Icon bubble (SVG internal — aman pakai innerHTML)
+                    const iconSpan = document.createElement('span');
+                    iconSpan.className = `w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${bg} ${text}`;
+                    iconSpan.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">${icon}</svg>`;
+                    item.appendChild(iconSpan);
+
+                    // Text content — textContent mencegah XSS
+                    const body = document.createElement('div');
+                    body.className = 'flex-1 min-w-0';
+
+                    const titleEl = document.createElement('div');
+                    titleEl.className = 'text-[11px] font-semibold text-slate-800 dark:text-slate-200';
+                    titleEl.textContent = n.title;
+
+                    const msgEl = document.createElement('div');
+                    msgEl.className = 'text-[10px] text-slate-500 dark:text-slate-400 mt-0.5';
+                    msgEl.style.lineHeight = '1.3';
+                    msgEl.textContent = n.message;
+
+                    const timeEl = document.createElement('div');
+                    timeEl.className = 'text-[9px] font-mono text-slate-400 mt-1';
+                    timeEl.textContent = n.time_ago;
+
+                    body.appendChild(titleEl);
+                    body.appendChild(msgEl);
+                    body.appendChild(timeEl);
+                    item.appendChild(body);
+
+                    // Unread dot
+                    if (!n.read_at) {
+                        const dot = document.createElement('span');
+                        dot.className = 'unread-dot w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0 mt-1.5';
+                        item.appendChild(dot);
+                    }
+
+                    // Delete button
+                    const actions = document.createElement('div');
+                    actions.className = 'absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity';
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'p-1 text-slate-400 hover:text-red-500 transition-colors';
+                    delBtn.title = 'Delete';
+                    delBtn.innerHTML = '<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>';
+                    delBtn.addEventListener('click', (e) => deleteNotif(n.id, e));
+                    actions.appendChild(delBtn);
+                    item.appendChild(actions);
+
+                    list.appendChild(item);
+                });
 
             } catch(e) { console.error('Failed fetching notif', e); }
         }

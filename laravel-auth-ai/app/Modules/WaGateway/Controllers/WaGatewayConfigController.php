@@ -12,9 +12,8 @@ use App\Modules\WaGateway\Services\WaGatewayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class WaGatewayConfigController extends Controller
@@ -28,48 +27,53 @@ class WaGatewayConfigController extends Controller
 
     public function index(Request $request): View
     {
-        $configs = WaGatewayConfig::when(!$request->user()->hasRole('super-admin'), function ($query) use ($request) {
-                $query->where('user_id', $request->user()->id);
-            })
+        $this->authorize('viewAny', WaGatewayConfig::class);
+
+        $accessibleConfigs = $this->accessibleConfigsQuery($request);
+
+        $configs = (clone $accessibleConfigs)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        $logs = WaGatewayLog::with('config')
-            ->whereHas('config', function ($query) use ($request) {
-                if (!$request->user()->hasRole('super-admin')) {
-                    $query->where('user_id', $request->user()->id);
-                }
-            })
+        $logs = WaGatewayLog::with(['config:id,name,purpose,is_active,user_id'])
+            ->whereIn('wa_gateway_config_id', (clone $accessibleConfigs)->select('id'))
             ->latest()
             ->limit(50)
             ->get();
 
         $stats = [
-            'total_configs' => WaGatewayConfig::count(),
-            'active_configs' => WaGatewayConfig::where('is_active', true)->count(),
-            'total_messages_sent' => WaGatewayLog::where('status', 'success')->count(),
-            'failed_messages' => WaGatewayLog::where('status', 'failed')->count(),
+            'total_configs' => (clone $accessibleConfigs)->count(),
+            'active_configs' => (clone $accessibleConfigs)->where('is_active', true)->count(),
+            'total_messages_sent' => WaGatewayLog::whereIn('wa_gateway_config_id', (clone $accessibleConfigs)->select('id'))
+                ->where('status', 'success')
+                ->count(),
+            'failed_messages' => WaGatewayLog::whereIn('wa_gateway_config_id', (clone $accessibleConfigs)->select('id'))
+                ->where('status', 'failed')
+                ->count(),
         ];
 
-        // Real Hourly Traffic Data (Last 24 Hours)
+        $hourlyCounts = WaGatewayLog::query()
+            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') as hour_bucket, COUNT(*) as total")
+            ->whereIn('wa_gateway_config_id', (clone $accessibleConfigs)->select('id'))
+            ->where('created_at', '>=', now()->subHours(24)->startOfHour())
+            ->groupBy('hour_bucket')
+            ->pluck('total', 'hour_bucket');
+
         $hourlyTraffic = [];
         for ($i = 23; $i >= 0; $i--) {
             $hour = now()->subHours($i);
-            $count = WaGatewayLog::whereBetween('created_at', [
-                $hour->copy()->startOfHour(),
-                $hour->copy()->endOfHour()
-            ])->count();
-            
+            $count = (int) ($hourlyCounts[$hour->format('Y-m-d H:00:00')] ?? 0);
+
             $hourlyTraffic[] = [
                 'hour' => $hour->format('H:00'),
                 'count' => $count,
-                'height' => $count > 0 ? min(100, max(15, ($count / 50) * 100)) : 5 // Visual height calculation
+                'height' => $count > 0 ? min(100, max(15, ($count / 50) * 100)) : 5
             ];
         }
         $stats['hourly_traffic'] = $hourlyTraffic;
 
         $templates = WaGatewayTemplate::latest()->get();
-        $systemSettings = config('wa_gateway', []);
+        $systemSettings = $this->redactedSystemSettings(config('wa_gateway', []));
 
         return view('wa-gateway::config.index', compact('configs', 'logs', 'stats', 'templates', 'systemSettings'));
     }
@@ -112,7 +116,9 @@ class WaGatewayConfigController extends Controller
             'providers' => [
                 'fonnte' => [
                     'base_url' => (string) $request->input('providers.fonnte.base_url'),
-                    'token' => (string) $request->input('providers.fonnte.token', ''),
+                    'token' => (string) ($request->filled('providers.fonnte.token')
+                        ? $request->input('providers.fonnte.token')
+                        : config('wa_gateway.providers.fonnte.token', '')),
                     'token_header' => (string) $request->input('providers.fonnte.token_header'),
                     'token_prefix' => (string) $request->input('providers.fonnte.token_prefix', ''),
                     'as_form' => true,
@@ -121,7 +127,9 @@ class WaGatewayConfigController extends Controller
                 ],
                 'official' => [
                     'base_url' => (string) $request->input('providers.official.base_url', ''),
-                    'token' => (string) $request->input('providers.official.token', ''),
+                    'token' => (string) ($request->filled('providers.official.token')
+                        ? $request->input('providers.official.token')
+                        : config('wa_gateway.providers.official.token', '')),
                     'token_header' => (string) $request->input('providers.official.token_header', 'Authorization'),
                     'token_prefix' => (string) $request->input('providers.official.token_prefix', 'Bearer '),
                     'as_form' => false,
@@ -140,7 +148,8 @@ class WaGatewayConfigController extends Controller
             ],
         ];
 
-        $this->persistModuleConfig($newConfig);
+        // Konfigurasi runtime disimpan di memory saja — tidak ditulis ke file PHP
+        // untuk mencegah secret tersimpan plaintext di filesystem source code.
         config(['wa_gateway' => $newConfig]);
 
         if (app()->configurationIsCached()) {
@@ -322,12 +331,24 @@ class WaGatewayConfigController extends Controller
 
     public function getLatestLogs(Request $request): JsonResponse
     {
-        $logs = WaGatewayLog::with('config')
-            ->whereHas('config', function ($query) use ($request) {
-                if (!$request->user()->hasRole('super-admin')) {
-                    $query->where('user_id', $request->user()->id);
-                }
-            })
+        $this->authorize('viewAny', WaGatewayConfig::class);
+
+        $logs = WaGatewayLog::query()
+            ->select([
+                'id',
+                'wa_gateway_config_id',
+                'target_number',
+                'message',
+                'status',
+                'response_id',
+                'error_message',
+                'sent_at',
+                'created_at',
+            ])
+            ->with(['config' => function ($query) {
+                $query->select('id', 'name', 'purpose', 'is_active', 'user_id');
+            }])
+            ->whereIn('wa_gateway_config_id', $this->accessibleConfigsQuery($request)->select('id'))
             ->latest()
             ->limit(20)
             ->get();
@@ -397,23 +418,24 @@ class WaGatewayConfigController extends Controller
         return $meta;
     }
 
-    protected function getModuleConfigPath(): string
+    protected function accessibleConfigsQuery(Request $request)
     {
-        return app_path('Modules/WaGateway/Config/wa_gateway.php');
+        return WaGatewayConfig::query()
+            ->when(
+                !$request->user()->hasRole('super-admin'),
+                fn ($query) => $query->where('user_id', $request->user()->id)
+            );
     }
 
-    protected function persistModuleConfig(array $newConfig): void
+    protected function redactedSystemSettings(array $settings): array
     {
-        $path = $this->getModuleConfigPath();
-        $content = "<?php\n\nreturn " . var_export($newConfig, true) . ";\n";
+        data_set($settings, 'providers.fonnte.token', '');
+        data_set($settings, 'providers.official.token', '');
 
-        try {
-            if (!File::exists(dirname($path))) {
-                File::makeDirectory(dirname($path), 0755, true);
-            }
-            File::put($path, $content);
-        } catch (\Exception $e) {
-            throw new \Exception('Gagal menulis file konfigurasi. Pastikan folder Modules/WaGateway/Config memiliki izin tulis. Error: ' . $e->getMessage());
-        }
+        return $settings;
     }
+
+    // persistModuleConfig() DIHAPUS — menyimpan secret ke file PHP adalah
+    // anti-pattern keamanan (secret exposure di filesystem & version control).
+    // Perubahan konfigurasi runtime menggunakan config() helper saja.
 }

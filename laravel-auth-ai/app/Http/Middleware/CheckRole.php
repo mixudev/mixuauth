@@ -52,6 +52,14 @@ class CheckRole
         }
 
         if (!$userHasRole) {
+            // Jika user sudah login DAN memiliki setidaknya satu role
+            // (tapi bukan role yang dibutuhkan), arahkan ke halaman tamu/info.
+            // Ini menghindari 403 kosong untuk user yang sah namun tidak punya akses penuh.
+            $user = $request->user();
+            if ($user && $user->roles()->exists()) {
+                return redirect()->route('guest.portal');
+            }
+
             abort(403, 'Forbidden - Insufficient role');
         }
 

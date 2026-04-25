@@ -23,10 +23,13 @@ class WaGatewayConfig extends Model
         'meta',
     ];
 
+    protected $hidden = ['token'];
+
     protected $casts = [
         'is_active' => 'boolean',
         'send_on_critical_alert' => 'boolean',
         'meta' => 'array',
+        'token' => 'encrypted',
     ];
 
     public function user()
