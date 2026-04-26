@@ -44,6 +44,8 @@ class ApplicationController
      */
     public function show(SsoClient $client): View
     {
+        $client->load('accessAreas');
+
         // 1. Data User Aktif (Memiliki Token Valid)
         $activeUsers = User::whereIn('id', function($query) use ($client) {
             $query->select('user_id')

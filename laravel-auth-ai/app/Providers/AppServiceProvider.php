@@ -105,6 +105,39 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(1)->by($userId !== '' ? $userId : $request->ip());
         });
 
+        // ── SSO Rate Limiters ─────────────────────────────────────────────────
+        // Cegah brute-force dan DoS pada endpoint OAuth2 dan SSO API
+
+        // /oauth/authorize — max 30 req/menit per IP (cegah spam authorization)
+        RateLimiter::for('sso-authorize', static function ($request) {
+            return Limit::perMinute(30)
+                ->by($request->ip())
+                ->response(function () {
+                    return response()->json([
+                        'error'             => 'too_many_requests',
+                        'error_description' => 'Terlalu banyak percobaan otorisasi. Coba lagi dalam satu menit.',
+                    ], 429);
+                });
+        });
+
+        // /oauth/token — max 10 req/menit per IP (cegah brute-force token exchange)
+        RateLimiter::for('sso-token', static function ($request) {
+            return Limit::perMinute(10)
+                ->by($request->ip())
+                ->response(function () {
+                    return response()->json([
+                        'error'             => 'too_many_requests',
+                        'error_description' => 'Terlalu banyak permintaan token. Coba lagi dalam satu menit.',
+                    ], 429);
+                });
+        });
+
+        // /api/user & /api/logout — max 60 req/menit per access token
+        RateLimiter::for('sso-api', static function ($request) {
+            $tokenId = optional($request->user()?->token())->id ?? $request->ip();
+            return Limit::perMinute(60)->by('sso-api|' . $tokenId);
+        });
+
         // ── View Composer ─────────────────────────────────────────────────────
         View::composer('layouts.app', function ($view) {
             $aiOnline = Cache::remember('ai_status', 15, function () {

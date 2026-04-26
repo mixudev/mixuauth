@@ -77,9 +77,31 @@
                                         <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Nonaktif
                                     </span>
                                 @endif
+                                {{-- Area requirement badge --}}
+                                @php $areaCount = $client->accessAreas()->count(); @endphp
+                                @if($areaCount > 0)
+                                    <div class="mt-1.5">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20">
+                                            <i class="fa-solid fa-shield-halved text-[8px]"></i> {{ $areaCount }} area
+                                        </span>
+                                    </div>
+                                @else
+                                    <div class="mt-1.5">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border border-slate-100 dark:border-slate-700">
+                                            <i class="fa-solid fa-globe text-[8px]"></i> Open
+                                        </span>
+                                    </div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
+                                    {{-- Manage Access Areas Button --}}
+                                    <a href="{{ route('sso.clients.edit-access-areas', $client) }}"
+                                       class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 transition-colors"
+                                       title="Kelola Access Area">
+                                        <i class="fa-solid fa-shield-halved text-xs"></i>
+                                    </a>
+
                                     <!-- Edit Button -->
                                     <button type="button" 
                                             onclick="openEditModal({{ $client->id }}, '{{ addslashes($client->name) }}', '{{ $protocol }}', '{{ $domain }}', '{{ addslashes($client->description) }}', {{ $client->is_active ? 'true' : 'false' }})"

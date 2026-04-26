@@ -31,6 +31,7 @@ export default defineConfig({
       '/architecture/': sharedSidebar(),
       '/security/': sharedSidebar(),
       '/auth/': sharedSidebar(),
+      '/sso/': sharedSidebar(),
       
       // Sidebar khusus untuk API
       '/api/': [
@@ -130,6 +131,16 @@ function sharedSidebar() {
       items: [
         { text: 'Social Auth (Google/Github)', link: '/auth/social-auth' },
       ]
+    },
+    {
+      text: 'Single Sign-On (SSO)',
+      collapsed: false,
+      items: [
+        { text: 'Ikhtisar SSO Server', link: '/sso/overview' },
+        { text: 'Arsitektur & Direktori', link: '/sso/architecture' },
+        { text: 'Access Area & Security', link: '/sso/security' },
+        { text: 'Panduan Integrasi Klien', link: '/sso/integration' },
+      ],
     },
     {
       text: 'Operasional',

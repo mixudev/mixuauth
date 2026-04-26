@@ -19,14 +19,14 @@ use Illuminate\Support\Facades\Route;
 
 // Passport Token Routes (Manual Registration)
 Route::group([
-    'as' => 'passport.',
-    'prefix' => 'oauth',
+    'as'        => 'passport.',
+    'prefix'    => 'oauth',
     'namespace' => 'Laravel\Passport\Http\Controllers',
+    'middleware' => ['throttle:sso-token', App\Http\Middleware\SsoSecurityHeadersMiddleware::class],
 ], function () {
     Route::post('/token', [
         'uses' => 'AccessTokenController@issueToken',
-        'as' => 'token',
-        'middleware' => 'throttle',
+        'as'   => 'token',
     ]);
 });
 
@@ -41,7 +41,8 @@ Route::group([
 
 Route::middleware(['web'])->group(function () {
     Route::get('/oauth/authorize', [OAuthController::class, 'show'])
-        ->name('passport.authorizations.authorize');
+        ->name('passport.authorizations.authorize')
+        ->middleware('throttle:sso-authorize');  // Rate limit: 30 req/menit per IP
 
     Route::post('/oauth/authorize', [OAuthController::class, 'approve'])
         ->name('passport.authorizations.approve')
@@ -50,6 +51,11 @@ Route::middleware(['web'])->group(function () {
     Route::delete('/oauth/authorize', [OAuthController::class, 'deny'])
         ->name('passport.authorizations.deny')
         ->middleware('auth');
+
+    // Halaman akses ditolak (area mismatch / client inactive)
+    Route::get('/sso/access-denied', function () {
+        return view('sso.access-denied');
+    })->name('sso.access-denied');
 });
 
 
@@ -85,6 +91,12 @@ Route::middleware([
     // Test Webhook Connection
     Route::post('clients/{client}/test-webhook', [SsoClientController::class, 'testWebhook'])
         ->name('clients.test-webhook');
+
+    // ── Access Area Management for Clients ──────────────────────────────────
+    Route::get('clients/{client}/access-areas', [SsoClientController::class, 'editAccessAreas'])
+        ->name('clients.edit-access-areas');
+    Route::post('clients/{client}/access-areas', [SsoClientController::class, 'syncAccessAreas'])
+        ->name('clients.sync-access-areas');
 
 
     /*

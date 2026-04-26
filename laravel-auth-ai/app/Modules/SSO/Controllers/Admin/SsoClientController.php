@@ -3,6 +3,8 @@
 namespace App\Modules\SSO\Controllers\Admin;
 
 use App\Modules\SSO\Models\SsoClient;
+use App\Modules\SSO\Models\AccessArea;
+use App\Modules\SSO\Services\SsoAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +18,7 @@ class SsoClientController
 {
     public function __construct(
         private readonly ClientRepository $clientRepository,
+        private readonly SsoAuditService $audit,
     ) {}
 
     /**
@@ -266,5 +269,74 @@ class SsoClientController
             if ($request->ajax()) return response()->json(['success' => false, 'message' => $excMsg], 500);
             return back()->with('error', $excMsg);
         }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Access Area Management for Clients
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Tampilkan halaman assign access areas ke client ini.
+     * GET /dashboard/sso/clients/{client}/access-areas
+     */
+    public function editAccessAreas(SsoClient $client): View
+    {
+        // Semua access area yang aktif
+        $allAreas = AccessArea::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // Area yang sudah di-assign ke client ini
+        $assignedIds = $client->accessAreas()->pluck('access_areas.id')->toArray();
+
+        return view('admin.sso.clients.access-areas', compact('client', 'allAreas', 'assignedIds'));
+    }
+
+    /**
+     * Sync access areas client (replace semua dengan yang baru).
+     * POST /dashboard/sso/clients/{client}/access-areas
+     */
+    public function syncAccessAreas(Request $request, SsoClient $client): RedirectResponse
+    {
+        $validated = $request->validate([
+            'access_area_ids'   => 'nullable|array',
+            'access_area_ids.*' => 'exists:access_areas,id',
+        ]);
+
+        $oldAreas = $client->accessAreas()->pluck('access_areas.slug')->toArray();
+
+        // sync() akan remove yang tidak ada dan add yang baru sekaligus
+        $client->accessAreas()->sync($validated['access_area_ids'] ?? []);
+
+        $newAreas = $client->fresh()->accessAreas()->pluck('access_areas.slug')->toArray();
+
+        Log::info('SSO client access areas synced.', [
+            'client'   => $client->name,
+            'old'      => $oldAreas,
+            'new'      => $newAreas,
+        ]);
+
+        $this->audit->log(
+            SsoAuditService::EVENT_CLIENT_AREA_SYNCED,
+            $request,
+            [
+                'client_id'   => $client->id,
+                'client_name' => $client->name,
+                'old_areas'   => $oldAreas,
+                'new_areas'   => $newAreas,
+            ],
+            $request->user()?->id
+        );
+
+        $count = count($validated['access_area_ids'] ?? []);
+        $msg   = $count > 0
+            ? "{$count} access area berhasil di-assign ke klien {$client->name}."
+            : "Semua access area telah dihapus dari klien {$client->name} (Open Client)."; 
+
+        return redirect()
+            ->route('sso.clients.index')
+            ->with('success', $msg);
     }
 }

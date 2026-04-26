@@ -3,6 +3,7 @@
 namespace App\Modules\SSO\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\User;
 
 class AccessArea extends Model
@@ -18,8 +19,30 @@ class AccessArea extends Model
         'is_active' => 'boolean',
     ];
 
-    public function users()
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * User yang di-assign ke area ini.
+     */
+    public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_access_area');
+    }
+
+    /**
+     * SSO Clients yang MEMBUTUHKAN area ini sebagai syarat akses.
+     */
+    public function ssoClients(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            SsoClient::class,
+            'sso_client_access_area',
+            'access_area_id',
+            'sso_client_id'
+        )->withTimestamps();
     }
 }

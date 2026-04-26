@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['auth:api', 'throttle:sso-api', \App\Http\Middleware\SsoSecurityHeadersMiddleware::class])->group(function () {
 
     // Profil user yang terautentikasi
     Route::get('/user', [UserInfoController::class, 'show']);

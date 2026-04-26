@@ -191,6 +191,33 @@
                 </div>
             </div>
 
+            <!-- Required Access Areas Box -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-50 dark:border-slate-800/50 pb-2">
+                    <h4 class="text-xs font-bold text-slate-800 dark:text-white">Required Access Areas</h4>
+                    <a href="{{ route('sso.clients.edit-access-areas', $client) }}" class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Manage</a>
+                </div>
+                
+                <div class="space-y-2">
+                    @if($client->accessAreas->count() > 0)
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($client->accessAreas as $area)
+                                <span class="px-2 py-1 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                    <i class="fa-solid fa-shield-halved text-slate-400 mr-1"></i> {{ $area->name }}
+                                </span>
+                            @endforeach
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-2 italic">User harus memiliki SEMUA area di atas untuk dapat login.</p>
+                    @else
+                        <div class="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded text-center">
+                            <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                <i class="fa-solid fa-globe mr-1"></i> Open Client (Tanpa Restriksi)
+                            </span>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <!-- Webhook Test Box (Interactive AJAX) -->
             <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-50 dark:border-slate-800/50 pb-2">

@@ -33,30 +33,43 @@ class SendGlobalLogoutWebhookJob implements ShouldQueue
 
     public function handle(): void
     {
+        // ── [5.2] Replay Attack Prevention ────────────────────────────────────
+        // Sertakan Unix timestamp dalam payload.
+        // Client WAJIB menolak webhook jika |now - timestamp| > 300 detik (5 menit).
+        // Ini mencegah penyerang me-replay webhook yang sudah ditangkap sebelumnya.
+        $timestamp = now()->timestamp;
+
         $payload = json_encode([
-            'event'   => 'global_logout',
-            'user_id' => $this->userId,
-            'email'   => $this->email,
+            'event'     => 'global_logout',
+            'user_id'   => $this->userId,
+            'email'     => $this->email,
+            'timestamp' => $timestamp,             // Unix epoch (UTC)
+            'issued_at' => now()->toIso8601String(), // Human-readable untuk debugging
         ]);
 
+        // HMAC-SHA256 dihitung dari keseluruhan JSON string
+        // (bukan array) agar konsisten antara server dan client
         $signature = hash_hmac('sha256', $payload, $this->client->webhook_secret);
 
         try {
             $response = Http::withHeaders([
                 'X-SSO-Signature' => $signature,
+                'X-SSO-Timestamp' => (string) $timestamp,   // Header terpisah untuk kemudahan verifikasi
                 'Content-Type'    => 'application/json',
                 'Accept'          => 'application/json',
             ])
             ->timeout($this->timeout)
-            ->post($this->client->webhook_url, json_decode($payload, true));
+            ->withBody($payload, 'application/json') // Kirim body sebagai raw JSON string
+            ->post($this->client->webhook_url);
 
             if ($response->successful()) {
                 Log::info('SSO global logout webhook sent.', [
-                    'client'  => $this->client->name,
-                    'url'     => $this->client->webhook_url,
-                    'user_id' => $this->userId,
-                    'email'   => $this->email,
-                    'status'  => $response->status(),
+                    'client'    => $this->client->name,
+                    'url'       => $this->client->webhook_url,
+                    'user_id'   => $this->userId,
+                    'email'     => $this->email,
+                    'status'    => $response->status(),
+                    'timestamp' => $timestamp,
                 ]);
             } else {
                 Log::warning('SSO global logout webhook failed.', [
@@ -73,7 +86,7 @@ class SendGlobalLogoutWebhookJob implements ShouldQueue
                 'error'  => $e->getMessage(),
             ]);
 
-            // Re-throw agar queue mencoba ulang
+            // Re-throw agar queue mencoba ulang sesuai $tries
             throw $e;
         }
     }
